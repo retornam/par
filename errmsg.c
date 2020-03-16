@@ -1,6 +1,6 @@
 /*********************/
 /* errmsg.c          */
-/* for Par 1.10      */
+/* for Par 1.20      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/

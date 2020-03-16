@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.10      */
+/* for Par 1.20      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -19,6 +19,10 @@
 
 #undef NULL
 #define NULL ((void *) 0)
+
+#ifdef DONTFREE
+#define free(ptr)
+#endif
 
 
 struct word {
@@ -237,9 +241,11 @@ static void justbreaks(
 }
 
 
-char **reformat(const char * const *inlines, int hang,
-                int prefix, int suffix, int width, int fit,
-                int just, int last, int touch, errmsg_t errmsg)
+char **reformat(
+  const char * const *inlines, const char * const *endline,
+  int hang, int prefix, int suffix, int width, int fit,
+  int just, int last, int touch, errmsg_t errmsg
+)
 {
   int numin, numout, affix, L, linelen, numgaps, extra, phase;
   const char * const *line, **suffixes = NULL, **suf, *end, *p1, *p2;
@@ -252,11 +258,7 @@ char **reformat(const char * const *inlines, int hang,
   *errmsg = '\0';
   dummy.next = dummy.prev = NULL;
   head = tail = &dummy;
-
-/* Count the input lines: */
-
-  for (line = inlines;  *line;  ++line);
-  numin = line - inlines;
+  numin = endline - inlines;
 
 /* Allocate space for pointers to the suffixes: */
 
@@ -273,7 +275,7 @@ char **reformat(const char * const *inlines, int hang,
   affix = prefix + suffix;
   L = width - prefix - suffix;
 
-  for (line = inlines, suf = suffixes;  *line;  ++line, ++suf) {
+  for (line = inlines, suf = suffixes;  line != endline;  ++line, ++suf) {
     for (end = *line;  *end;  ++end);
     if (end - *line < affix) {
       sprintf(errmsg,

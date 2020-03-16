@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.10      */
+/* for Par 1.20      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -19,9 +19,13 @@
 #undef NULL
 #define NULL ((void *) 0)
 
+#ifdef DONTFREE
+#define free(ptr)
+#endif
+
 
 const char * const progname = "par";
-const char * const versionnum = "1.10";
+const char * const versionnum = "1.20";
 
 struct charset {
   char *individuals;  /* Characters in this string are in the set.        */
@@ -110,13 +114,13 @@ static int strtoudec(const char *s, int *pn)
 }
 
 
-static void parsearg(const char *arg, int *phang, int *pprefix,
-                     int *psuffix, int *pwidth, int *pfit, int *pjust,
+static void parsearg(const char *arg, int *phang, int *pprefix, int *psuffix,
+                     int *pwidth, int *pdiv, int *pfit, int *pjust,
                      int *plast, int *ptouch, int *pversion, errmsg_t errmsg)
 
-/* Parses the command line argument in arg, setting    */
-/* *phang, *pprefix, *psuffix, *pwidth, *pfit, *pjust, */
-/* *plast, *ptouch, and/or *pversion as appropriate.   */
+/* Parses the command line argument in arg, setting *phang, */
+/* *pprefix, *psuffix, *pwidth, *pdiv, *pfit, *pjust,       */
+/* *plast, *ptouch, and/or *pversion as appropriate.        */
 {
   const char *savearg = arg;
   char oc;
@@ -154,7 +158,8 @@ static void parsearg(const char *arg, int *phang, int *pprefix,
     }
     else {
       if (n > 1) goto badarg;
-      if      (oc == 'f') *pfit   = n;
+      if      (oc == 'd') *pdiv   = n;
+      else if (oc == 'f') *pfit   = n;
       else if (oc == 'j') *pjust  = n;
       else if (oc == 'l') *plast  = n;
       else if (oc == 't') *ptouch = n;
@@ -165,7 +170,7 @@ static void parsearg(const char *arg, int *phang, int *pprefix,
   return;
 
 badarg:
-  sprintf(errmsg, "Bad argument: %.*s\n", errmsg_size - 16, savearg);
+  sprintf(errmsg, "Bad argument: %.*s\n", (int) errmsg_size - 16, savearg);
 }
 
 
@@ -244,50 +249,147 @@ rlcleanup:
 }
 
 
-static void setaffixes(
-  const char * const *inlines, struct charset bodychars,
-  int hang, int *pprefix, int *psuffix
+static void compresuflen(
+  const char * const *lines, const char * const *endline,
+  struct charset bodychars, int pre, int suf, int *ppre, int *psuf
 )
-/* If either of *pprefix, *psuffix is less than 0, sets it to a default */
-/* value based on inlines and bodychars, according to "par.doc".        */
+/* lines is an array of strings, up to but not including endline. */
+/* Writes into *ppre and *psuf the comprelen and comsuflen of the */
+/* lines in lines. Assumes that they have already been determined */
+/* to be at least pre and suf. endline must not equal lines.      */
 {
-  int numlines;
-  const char *start, *end, * const *line, *p1, *p2;
+  const char *start, *end, * const *line, *p1, *p2, *start2;
 
-  for (line = inlines;  *line;  ++line);
-  numlines = line - inlines;
+  start = *lines;
+  for (end = start + pre;  *end && !incharset(*end, bodychars);  ++end);
+  for (line = lines + 1;  line != endline;  ++line) {
+    for (p1 = start + pre, p2 = *line + pre;
+         p1 < end && *p1 == *p2;
+         ++p1, ++p2);
+    end = p1;
+  }
+  *ppre = end - start;
+
+  start2 = *lines + *ppre;
+  for (end = start2;  *end;  ++end);
+  for (start = end - suf;
+       start > start2 && !incharset(start[-1], bodychars);
+       --start);
+  for (line = lines + 1;  line != endline;  ++line) {
+    start2 = *line + *ppre;
+    for (p2 = start2;  *p2;  ++p2);
+    for (p1 = end - suf, p2 -= suf;
+         p1 > start && p2 > start2 && p1[-1] == p2[-1];
+         --p1, --p2);
+    start = p1;
+  }
+  while (end - start >= 2 && *start == ' ' && start[1] == ' ') ++start;
+  *psuf = end - start;
+}
+
+
+static void delimit(
+  const char * const *lines, const char * const *endline,
+  struct charset bodychars, int div, int pre, int suf, char *tags
+)
+/* lines is an array of strings, up to but not including endline.    */
+/* Sets each character in the parallel array tags to 'f', 'p', or    */
+/* 'v' according to whether the corresponding line in lines is the   */
+/* first line of a paragraph, some other line in a paragraph, or a   */
+/* vacant line, respectively, depending on the values of bodychars   */
+/* and div, according to "par.doc". It is assumed that the comprelen */
+/* and comsuflen of the lines in lines have already been determined  */
+/* to be at least pre and suf, respectively.                         */
+{
+  const char * const *line, *end, *p, * const *nextline;
+  char *tag, *nexttag;
+  int anyvacant = 0, status;
+
+  if (endline == lines) return;
+
+  if (endline == lines + 1) {
+    *tags = 'f';
+    return;
+  }
+
+  compresuflen(lines, endline, bodychars, pre, suf, &pre, &suf);
+
+  line = lines;
+  tag = tags;
+  do {
+    *tag = 'v';
+    for (end = *line;  *end;  ++end);
+    end -= suf;
+    for (p = *line + pre;  p < end;  ++p)
+      if (*p != ' ') {
+        *tag = 'p';
+        break;
+      }
+    if (*tag == 'v') anyvacant = 1;
+    ++line;
+    ++tag;
+  } while (line != endline);
+
+  if (anyvacant) {
+    line = lines;
+    tag = tags;
+    do {
+      if (*tag == 'v') {
+        ++line;
+        ++tag;
+        continue;
+      }
+
+      for (nextline = line + 1, nexttag = tag + 1;
+           nextline != endline && *nexttag == 'p';
+           ++nextline, ++nexttag);
+
+      delimit(line,nextline,bodychars,div,pre,suf,tag);
+
+      line = nextline;
+      tag = nexttag;
+    } while (line != endline);
+
+    return;
+  }
+
+  if (!div) {
+    *tags = 'f';
+    return;
+  }
+
+  line = lines;
+  tag = tags;
+  status = ((*lines)[pre] == ' ');
+  do {
+    if (((*line)[pre] == ' ') == status)
+      *tag = 'f';
+    ++line;
+    ++tag;
+  } while (line != endline);
+}
+
+
+static void setaffixes(
+  const char * const *inlines, const char * const *endline,
+  struct charset bodychars, int hang, int *pprefix, int *psuffix
+)
+/* inlines is an array of strings, up to but not including endline. If */
+/* either of *pprefix, *psuffix is less than 0, sets it to a default   */
+/* value based on inlines and bodychars, according to "par.doc".       */
+{
+  int numin, pre, suf;
+
+  numin = endline - inlines;
+
+  if ((*pprefix < 0 || *psuffix < 0) && numin >= hang + 2)
+    compresuflen(inlines + hang, endline, bodychars, 0, 0, &pre, &suf);
 
   if (*pprefix < 0)
-    if (numlines <= hang + 1)
-      *pprefix = 0;
-    else {
-      start = inlines[hang];
-      for (end = start;  *end && !incharset(*end, bodychars);  ++end);
-      for (line = inlines + hang + 1;  *line;  ++line) {
-        for (p1 = start, p2 = *line;  p1 < end && *p1 == *p2;  ++p1, ++p2);
-        end = p1;
-      }
-      *pprefix = end - start;
-    }
+    *pprefix = numin < hang + 2  ?  0  :  pre;
 
   if (*psuffix < 0)
-    if (numlines <= 1)
-      *psuffix = 0;
-    else {
-      for (end = *inlines;  *end;  ++end);
-      for (start = end;
-           start > *inlines && !incharset(start[-1], bodychars);
-           --start);
-      for (line = inlines + 1;  *line;  ++line) {
-        for (p2 = *line;  *p2;  ++p2);
-        for (p1 = end;
-             p1 > start && p2 > *line && p1[-1] == p2[-1];
-             --p1, --p2);
-        start = p1;
-      }
-      while (end - start >= 2 && *start == ' ' && start[1] == ' ') ++start;
-      *psuffix = end - start;
-    }
+    *psuffix = numin < hang + 2  ?  0  :  suf;
 }
 
 
@@ -306,10 +408,11 @@ static void freelines(char **lines)
 
 main(int argc, const char * const *argv)
 {
-  int hang = 0, prefix = -1, suffix = -1, width = 72, fit = 0, just = 0,
-      last = 0, touch = -1, version = 0, prefixbak, suffixbak, c;
-  char *parinit, *picopy = NULL, *parbody, *arg, **inlines = NULL,
-       **outlines = NULL, **line, ch;
+  int hang = 0, prefix = -1, suffix = -1, width = 72, div = 0, fit = 0,
+      just = 0, last = 0, touch = -1, version = 0, prefixbak, suffixbak, c;
+  char *parinit, *picopy = NULL, *parbody, *arg, ch, **inlines = NULL,
+       **endline, *tags = NULL, **firstline, *firsttag, *end, **nextline,
+       *nexttag, **outlines = NULL, **line;
   const char * const whitechars = " \f\n\r\t\v";
   struct charset bodychars = { NULL, 0 };
   struct buffer *cbuf = NULL;
@@ -327,7 +430,7 @@ main(int argc, const char * const *argv)
     strcpy(picopy,parinit);
     arg = strtok(picopy,whitechars);
     while (arg) {
-      parsearg(arg, &hang, &prefix, &suffix, &width,
+      parsearg(arg, &hang, &prefix, &suffix, &width, &div,
                &fit, &just, &last, &touch, &version, errmsg);
       if (*errmsg || version) goto parcleanup;
       arg = strtok(NULL,whitechars);
@@ -340,7 +443,7 @@ main(int argc, const char * const *argv)
 
   while (*++argv) {
     parsearg(*argv, &hang, &prefix, &suffix, &width,
-             &fit, &just, &last, &touch, &version, errmsg);
+             &div, &fit, &just, &last, &touch, &version, errmsg);
     if (*errmsg || version) goto parcleanup;
   }
 
@@ -401,35 +504,73 @@ main(int argc, const char * const *argv)
 
     inlines = readlines(errmsg);
     if (*errmsg) goto parcleanup;
-    if (!*inlines) {
+
+    for (endline = inlines;  *endline;  ++endline);
+    if (endline == inlines) {
       free(inlines);
       inlines = NULL;
       continue;
     }
 
-    prefix = prefixbak;
-    suffix = suffixbak;
-    setaffixes((const char * const *) inlines,
-               bodychars, hang, &prefix, &suffix);
-    if (width <= prefix + suffix) {
-      sprintf(errmsg,
-              "<width> (%d) <= <prefix> (%d) + <suffix> (%d)\n",
-              width, prefix, suffix);
+    tags = malloc((endline - inlines) * sizeof(char));
+    if (!tags) {
+      strcpy(errmsg,outofmem);
       goto parcleanup;
     }
 
-    outlines = reformat((const char * const *) inlines, hang, prefix,
-                        suffix, width, fit, just, last, touch, errmsg);
-    if (*errmsg) goto parcleanup;
+    delimit((const char * const *) inlines,
+            (const char * const *) endline, bodychars, div, 0, 0, tags);
+
+    firstline = inlines;
+    firsttag = tags;
+    do {
+      if (*firsttag == 'v') {
+        for (end = *firstline;  *end;  ++end);
+        while (end > *firstline && end[-1] == ' ') --end;
+        *end = '\0';
+        puts(*firstline);
+        ++firsttag;
+        ++firstline;
+        continue;
+      }
+
+      for (nexttag = firsttag + 1, nextline = firstline + 1;
+           firstline != endline && *nexttag == 'p';
+           ++nexttag, ++nextline);
+
+      prefix = prefixbak;
+      suffix = suffixbak;
+      setaffixes((const char * const *) firstline,
+                 (const char * const *) nextline,
+                 bodychars, hang, &prefix, &suffix);
+      if (width <= prefix + suffix) {
+        sprintf(errmsg,
+                "<width> (%d) <= <prefix> (%d) + <suffix> (%d)\n",
+                width, prefix, suffix);
+        goto parcleanup;
+      }
+
+      outlines =
+        reformat((const char * const *) firstline,
+                 (const char * const *) nextline, hang,
+                 prefix, suffix, width, fit, just, last, touch, errmsg);
+      if (*errmsg) goto parcleanup;
+
+      for (line = outlines;  *line;  ++line)
+        puts(*line);
+
+      freelines(outlines);
+      outlines = NULL;
+
+      firsttag = nexttag;
+      firstline = nextline;
+    } while (firstline != endline);
+
+    free(tags);
+    tags = NULL;
 
     freelines(inlines);
     inlines = NULL;
-
-    for (line = outlines;  *line;  ++line)
-      puts(*line);
-
-    freelines(outlines);
-    outlines = NULL;
   }
 
 parcleanup:
@@ -438,10 +579,11 @@ parcleanup:
   if (cbuf) freebuffer(cbuf);
   if (bodychars.individuals) free(bodychars.individuals);
   if (inlines) freelines(inlines);
+  if (tags) free(tags);
   if (outlines) freelines(outlines);
 
   if (*errmsg) {
-    printf("%s error:\n%.*s", progname, errmsg_size, errmsg);
+    printf("%s error:\n%.*s", progname, (int) errmsg_size, errmsg);
     exit(EXIT_FAILURE);
   }
 
@@ -451,6 +593,6 @@ parcleanup:
 
 badparbody:
 
-  sprintf(errmsg, "Bad PARBODY: %.*s\n", errmsg_size - 15, parbody);
+  sprintf(errmsg, "Bad PARBODY: %.*s\n", (int) errmsg_size - 15, parbody);
   goto parcleanup;
 }

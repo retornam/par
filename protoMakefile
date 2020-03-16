@@ -1,6 +1,6 @@
 # *********************
 # * protoMakefile     *
-# * for Par 1.10      *
+# * for Par 2.10      *
 # * Copyright 1993 by *
 # * Adam M. Costello  *
 # *********************
@@ -11,8 +11,13 @@
 # compiles the ANSI C source file "foo.c" into the object file "foo.o".
 # You may assume that foo.c uses no floating point math.
 #
-# Example (for Sun workstations):
-# CC = acc -c -O -s -Xc
+# If your operating system or your compiler's exit() function automatically
+# frees all memory allocated by malloc() when a process terminates, then you
+# can choose to trade away space efficiency for time efficiency by defining
+# DONTFREE.
+#
+# Example (for Solaris 2.2):
+# CC = cc -c -O -s -Xc -DDONTFREE
 
 CC =
 
@@ -22,8 +27,8 @@ CC =
 # into the executable file "foo".
 # You may assume that none of the .o files use floating point math.
 #
-# Example (for Sun workstations):
-# LINK1 = acc -s
+# Example (for Solaris 2.2):
+# LINK1 = cc -s
 # LINK2 = -o
 
 LINK1 =
