@@ -1,7 +1,7 @@
   *********************
   * releasenotes      *
-  * for Par 1.41      *
-  * Copyright 1993 by *
+  * for Par 1.50      *
+  * Copyright 1996 by *
   * Adam M. Costello  *
   *********************
 
@@ -165,3 +165,23 @@ Par 1.41 released 31 Oct 1993
     Added to the Rights and Responsibilities section of par.doc a guideline
         for handling version numbers in patched versions of Par.
     Added a useful suggestion to protoMakefile.
+
+Par 1.50 released 11 Feb 1996
+    Added the following features:
+        The T option (suggested by jjunker@eos.hitc.com (Jules Junker)).
+        The b option.
+    Loosened the terms of the Copyright.
+    Changed protoMakefile:
+        Added the E and O macros (suggested by pgutterman@worldbank.org
+            (Peter A. Getterman).
+        Added sensible default values for all macros.
+    Added question-mark to the recommended set of body characters.
+    Restored documentation of the number-without-a-letter shortcut
+        command-line option, which got lost between versions 1.00 and
+        1.10.  Its absence was noted by dws@ssec.wisc.edu (David W.
+        Sanderson).
+    Added .exrc examples (suggested by matuli_a@marlin.navsea.navy.mil
+        (Alex Matulich), though I used my own .exrc).
+    Added the Apologies section to par.doc and par.1.
+    Made many other tweeks to the documentation.
+    Removed the useless synopsis from the runtime help message.

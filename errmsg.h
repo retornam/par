@@ -1,7 +1,7 @@
 /*********************/
 /* errmsg.h          */
-/* for Par 1.41      */
-/* Copyright 1993 by */
+/* for Par 1.50      */
+/* Copyright 1996 by */
 /* Adam M. Costello  */
 /*********************/
 

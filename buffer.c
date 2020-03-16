@@ -1,7 +1,7 @@
 /*********************/
 /* buffer.c          */
-/* for Par 1.41      */
-/* Copyright 1993 by */
+/* for Par 1.50      */
+/* Copyright 1996 by */
 /* Adam M. Costello  */
 /*********************/
 
@@ -56,8 +56,8 @@ buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
   maxhere = 124 / itemsize;
   if (maxhere < 4) maxhere = 4;
 
-  buf = (buffer *) malloc(sizeof (buffer));
-  blk = (block *) malloc(sizeof (block));
+  buf = malloc(sizeof (buffer));
+  blk = malloc(sizeof (block));
   items = malloc(maxhere * itemsize);
   if (!buf || !blk || !items) {
     strcpy(errmsg,outofmem);
@@ -124,7 +124,7 @@ void additem(buffer *buf, const void *item, errmsg_t errmsg)
     new = blk->next;
     if (!new) {
       maxhere = 2 * blk->maxhere;
-      new = (block * ) malloc(sizeof (block));
+      new = malloc(sizeof (block));
       items = malloc(maxhere * itemsize);
       if (!new || !items) {
         strcpy(errmsg,outofmem);

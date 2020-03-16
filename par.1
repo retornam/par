@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.41      *
-.\"* Copyright 1993 by *
+.\"* for Par 1.50      *
+.\"* Copyright 1996 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "31 October 1993" "Par 1.41" "USER COMMANDS"
+.TH par 1 "11 February 1996" "Par 1.50" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -28,7 +28,9 @@ par \- filter for reformatting paragraphs
 .OP p \*Oprefix\*C
 .OP r \*Orepeat\*C
 .OP s \*Osuffix\*C
+.OP T \*OTab\*C
 .OP w \*Owidth\*C
+.OP b \*Obody\*C
 .OP c \*Ocap\*C
 .OP d \*Odiv\*C
 .OP E \*OErr\*C
@@ -83,23 +85,42 @@ them so that they all end in the same column.
 .SH QUICK START
 .LP
 .B par
-is necessarily complex.  For those who wish to
-use it immediately and understand it later,
-assign the following environment variables:
-.TP "\w'PARQUOTE 'u"
-.SM PARBODY
-= ._A_a
-.TP
+is necessarily complex.  For those who wish to use
+it immediately and understand it later, assign the
 .SM PARINIT
-= Rgqr
-.TP
-.SM PARQUOTE
-= _s>|
+environment variable the following value:
+.IP
+rTbgqR B=.?_A_a Q=_s>|
 .LP
-The greater-than sign and the vertical bar in the value of
-.SM PARQUOTE
-will probably have to be escaped or quoted to
-prevent your shell from interpreting them.
+The spaces, question mark, greater-than sign, and
+vertical bar will probably have to be escaped or
+quoted to prevent your shell from interpreting them.
+.LP
+The documentation, though precise, is unfortunately
+not well-written for the end-user.  Your
+best bet is probably to read quickly the
+.SM DESCRIPTION\s0,
+.SM TERMINOLOGY\s0,
+.SM OPTIONS\s0,
+and
+.SM ENVIRONMENT
+sections, then read carefully the
+.SM EXAMPLES
+section, referring back to the
+.SM OPTIONS
+and
+.SM TERMINOLOGY
+sections as needed.
+.LP
+For the \*Qpower user\*U, a full understanding of
+.B par
+will require multiple readings of the
+.SM TERMINOLOGY\s0,
+.SM OPTIONS\s0,
+.SM DETAILS\s0,
+and
+.SM EXAMPLES
+sections.
 .SH TERMINOLOGY
 .LP
 Miscellaneous terms:
@@ -154,19 +175,23 @@ A member of the set of characters defined by the
 .SM PARBODY
 environment variable (see the
 .SM ENVIRONMENT
+section) and/or the
+.B B
+option (see the
+.SM OPTIONS
 section).
 .IP "protective character"
 A member  of the set of characters defined by the
 .SM PARPROTECT
-environment variable (see the
-.SM ENVIRONMENT
-section).
+environment variable and/or the
+.B P
+option.
 .IP "quote character"
 A member of the set of characters defined by the
 .SM PARQUOTE
-environment variable (see the
-.SM ENVIRONMENT
-section).
+environment variable and/or the
+.B Q
+option.
 .IP "terminal character"
 A period, question mark, exclamation point, or colon.
 .IP "white character"
@@ -177,9 +202,25 @@ return, tab, or vertical tab.
 Functions:
 .RS
 .IP comprelen
-The comprelen of a non-empty sequence of lines is the
-length of the longest string of non-body characters
-appearing at the beginning of every line in the set.
+Given a non-empty sequence
+.I S
+of lines, let
+.I c
+be their longest common prefix.  If the parameter
+.I body
+is 0, place a divider just after
+the leading non-body characters in
+.I c
+(at the beginning if there are none).  If
+.I body
+is 1, place the divider just after the
+last non-space non-body character in
+.I c
+(at the beginning if there is none), then
+advance the divider over any immediately
+following spaces.  The comprelen of
+.I S
+is the number of characters preceeding the divider.
 .IP comsuflen
 Given a non-empty sequence
 .I S
@@ -195,15 +236,23 @@ characters from each line in
 .IR S .
 Let
 .I c
-be the longest string of non-body characters
-appearing at the end of every line in
+be the longest common suffix of the lines in
 .IR T .
-Strip
+If
+.I body
+is 0, place a divider just before
+the trailing non-body characters in
 .I c
-of all initial spaces except the last.  The length of
-.I c
-is the comsuflen of
-.IR S .
+(at the end if there are none), then
+advance the divider over all but the last
+of any immediately following spaces.  If
+.I body
+is 1, place the divider just before the first
+non-space non-body character, then back up
+the divider over one immediately preceeding
+space if there is one.  The comsuflen of
+.I S
+is the number of characters following the divider.
 .IP "fallback prelen (suflen)"
 The fallback prelen (suflen) of an IP is: the comprelen
 (comsuflen) of the IP, if the IP contains at least two
@@ -352,13 +401,13 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.41\*U is printed on the output.  Of
+is read.  \*Qpar 1.50\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
 .I op
 is a single character, either an equal sign
-(=), a plus sign (+), or a minus sign (-).
+(=), a plus sign (+), or a minus sign (-), and
 .I set
 is a string using charset syntax.  If
 .I op
@@ -402,11 +451,12 @@ variable is described here.  See the
 .SM DETAILS
 section for the rest of the story.
 .LP
-The first five parameters,
+The first six parameters,
 .IR hang ,
 .IR prefix ,
 .IR repeat ,
 .IR suffix ,
+.IR Tab ,
 and
 .IR width ,
 may be set to any unsigned decimal integer less than 10000.
@@ -484,6 +534,14 @@ is unset, even if it had been set earlier.  (See also the
 .B h
 option.)
 .TP
+.BI T\fR[ Tab\fR]
+Tab characters in the input are expanded
+to spaces, assuming tab stops every
+.I Tab
+columns.  Must not be 0.  Defaults to 1.  If the
+.B T
+option is given without a number, the value 8 is inferred.
+.TP
 .BI w\fR[ width\fR]
 No line in the OP may contain more than
 .I width
@@ -492,7 +550,8 @@ newlines.  Defaults to 72.  If the
 .B w
 option is given without a number, the value 79 is inferred.
 .LP
-The remaining twelve parameters,
+The remaining thirteen parameters,
+.IR body ,
 .IR cap ,
 .IR div ,
 .IR Err ,
@@ -509,6 +568,17 @@ and
 may be set to either 0 or 1.  If the number is
 absent in the option, the value 1 is inferred.
 .TP 1i
+.BI b\fR[ body\fR]
+If
+.I body
+is 1, prefixes may not contain any trailing body characters,
+and suffixes may not contain any leading body characters.
+(Actually, the situation is complicated by space characters.
+See comprelen and comsuflen in the Terminology section.)  If
+.I body
+is 0, prefixes and suffixes may not contain
+any body characters at all.  Defaults to 0.
+.TP
 .BI c\fR[ cap\fR]
 If
 .I cap
@@ -520,7 +590,7 @@ option.  Defaults to 0.
 .BI d\fR[ div\fR]
 If
 .I div
-is 0, each block becames an IP.  If
+is 0, each block becomes an IP.  If
 .I div
 is 1, each block is subdivided into IPs as follows:  Let
 .I p
@@ -651,12 +721,7 @@ an input word to contain more than
 characters.  Otherwise, such
 words are chopped after each
 .IR L th
-character into shorter words.  Defaults to 0.  It
-is recommended that this option be included in
-.SM PARINIT
-(see the
-.SM ENVIRONMENT
-section).
+character into shorter words.  Defaults to 0.
 .TP
 .BI t\fR[ touch\fR]
 Has no effect if
@@ -684,6 +749,13 @@ and
 and
 .B l
 options.)
+.LP
+If an argument begins with a number,
+that number is assumed to belong to a
+.B p
+option if it is 8 or less, and to a
+.B w
+option otherwise.
 .LP
 If the value of any parameter is set more
 than once, the last value is used.  When
@@ -745,6 +817,16 @@ If a
 character appears in the value of an environment variable,
 it and the rest of the string will not be seen by
 .BR par .
+.LP
+Note that the
+.SM PARINIT
+variable, together with the
+.BR B ,
+.BR P ,
+and
+.B Q
+options, renders the other environment variables
+unnecessary.  They are included for backward compatibility.
 .SH DETAILS
 .LP
 Lines are terminated by newline characters, but the
@@ -760,6 +842,17 @@ output.  All other input lines, as they are read, have any
 .SM NUL
 characters removed, and every white character
 (except newlines) turned into a space.
+Actually, each tab character is turned into
+.I Tab
+-
+.RI ( n
+%
+.IR Tab )
+spaces, where
+.I n
+is the number of characters preceeding the
+tab character on the line (evaluated after
+earlier tab characters have been expanded).
 .LP
 Blank lines in the input are transformed
 into empty lines in the output.
@@ -769,7 +862,7 @@ If
 is 0, all bodiless lines are vacant, and they are all
 simply stripped of trailing spaces before being output.  If
 .I repeat
-is 1, only vacant lines whose suffixes have length
+is not 0, only vacant lines whose suffixes have length
 0 are treated that way; other bodiless lines have
 the number of instances of their repeat characters
 increased or decreased until the length of the line is
@@ -1136,6 +1229,31 @@ are clearly more eye-pleasing.
 is most useful in conjunction with the text-filtering
 features of an editor, such as the ! commands of
 .BR vi .
+You may wish to add the following lines to your
+.B .exrc
+file:
+.VS
+        " use Bourne shell for speed:
+        set shell=/bin/sh
+        "
+        " reformat paragraph with no arguments:
+        map ** {!}par^M}
+        "
+        " reformat paragraph with arguments:
+        map *^V  {!}par
+.VE
+.LP
+Note that the leading spaces must be removed, and that what
+is shown as ^M and ^V really need to be ctrl-M and ctrl-V.
+Also note that the last map command contains two spaces
+following the ctrl-V, plus one at the end of the line.
+.LP
+To reformat a simple paragraph delimited by blank lines in
+.BR vi ,
+you can put the cursor anywhere in it and type
+\*Q\fB**\fP\*U (star star). If you need to supply
+arguments to par, you can type \*Q\fB*\ \fP\*U
+(star space) instead, then type the arguments.
 .LP
 The rest of this section is a series of
 before-and-after pictures showing some typical uses of
@@ -1620,6 +1738,31 @@ After
 
         Please unsubscribe me from alt.hello.
 .VE
+.LP
+Before:
+.VS
+        amc> The b option was added primarily to deal with
+        amc> this new style of quotation
+        amc> which became popular after Par 1.41 was released.
+        amc>
+        amc> Par still pays attention to body characters.
+        amc> Par should not mistake "Par" for part of the prefix.
+        amc> Par should not mistake "." for a suffix.
+.VE
+.LP
+After
+.CM "par B=._A_a 50bg"
+.VS
+        amc> The b option was added primarily to
+        amc> deal with this new style of quotation
+        amc> which became popular after Par 1.41
+        amc> was released.
+        amc>
+        amc> Par still pays attention to body
+        amc> characters.  Par should not mistake
+        amc> "Par" for part of the prefix.  Par
+        amc> should not mistake "." for a suffix.
+.VE
 .SH SEE ALSO
 .LP
 .B par.doc
@@ -1662,32 +1805,21 @@ can preserve wide sentence breaks in a
 paragraph, or remove them, but it can't insert
 them if they aren't already in the input.
 .LP
-If you use tabs, you probably won't like the way
+If you use tabs, you may not like the way
 .B par
-handles (or doesn't handle) them.  It turns them into
-spaces.  I didn't bother trying to make sense of tabs
-because they don't make sense to begin with.  Not everyone's
+handles (or doesn't handle) them.  It
+expands them into spaces.  I didn't let
+.B par
+output tabs because tabs don't make sense.  Not everyone's
 terminal has the same tab settings, so text files containing
-tabs are sometimes mangled.  In fact, almost every text
-file containing tabs gets mangled when something is
-inserted at the beginning of each line (when quoting
-e-mail or commenting out a section of a shell script, for
-example), making them a pain to edit.  In my opinion, the
-world would be a nicer place if everyone stopped using
-tabs (so I'm doing my part by not supporting them in
-.BR par .)
-If you find yourself editing a file containing tabs, the
-first thing you should do is run the whole file through
-.BR expand ,
-a standard
-.SM UNIX
-command (if there is such a thing) that
-replaces tabs with spaces while preserving the
-appearance of the file.  If you're not in a
-.SM UNIX
-environment, then hopefully someone has ported
-.B expand
-to your system.  (Thanks to ets1@cs.wustl.edu (Eric
+tabs are sometimes mangled.  In fact, almost every text file
+containing tabs gets mangled when something is inserted at the
+beginning of each line (when quoting e-mail or commenting out
+a section of a shell script, for example), making them a pain
+to edit.  In my opinion, the world would be a nicer place if
+everyone stopped using tabs, so I'm doing my part by not letting
+.B par
+output them.  (Thanks to ets1@cs.wustl.edu (Eric
 T. Stuebe) for showing me the light about tabs.)
 .LP
 There is currently no way for the length of the
@@ -1695,6 +1827,31 @@ output prefix to differ from the length of the
 input prefix.  Ditto for the suffix.  I may consider
 adding this capability in a future release, but
 right now I'm not sure how I'd want it to work.
+.SH APOLOGIES
+.LP
+Par began in July 1993 as a small program designed to do one
+narrow task: reformat a single paragraph that might have a
+border on either side.  It was pretty clean back then.  Over
+the next three months, it very rapidly expanded to handle
+multiple paragraphs, offer more options, and take better
+guesses, at the cost of becoming extremely complex, and very
+unclean.  It is nowhere near the optimal design for the
+larger task it now tries to address.  Its only redeeming
+features are that it is extremely useful (I find it
+indispensable), extremely portable, and very stable (between
+the release of version 1.41 on 31 Oct 1993 and the release
+of version 1.50 on 11 Feb 1996, no bugs were reported).
+.LP
+Back in 1993 I had very little experience at writing
+documentation for users, so the documentation for Par
+became rather nightmarish.  There is no separation between
+how-it-works (which is painfully complex) and how-to-use-it
+(which is fairly simple, if you can ever figure it out).
+.LP
+Someday I ought to reexamine the problem, and redesign
+a new, clean solution from scratch.  I don't know
+when I might get enough free time to start on such
+a project.  Text files may be obsolete by then.
 .SH BUGS
 .LP
 If I knew of any bugs, I wouldn't release the package.  Of
@@ -1705,7 +1862,7 @@ in the documentation), or if you have
 any suggestions, please send e-mail to:
 .RS
 .LP
-amc@ecl.wustl.edu
+amc@cs.wustl.edu
 .RE
 .LP
 or send paper mail to:
@@ -1713,18 +1870,24 @@ or send paper mail to:
 .LP
 .nf
 Adam M. Costello
-Campus Box 1045
+Campus Box 1115
 Washington University
 One Brookings Dr.
-St. Louis, MO 63130
+St. Louis, MO 63130-4899
 USA
 .fi
 .RE
-.LP
-Note that both addresses could
-change anytime after June 1994.
 .LP
 When reporting a bug, please include the exact input and
 command line options used, and the version number of
 .BR par ,
 so that I can reproduce it.
+.LP
+The latest release of Par is available on the Web at:
+.RS
+.LP
+http://www.cs.wustl.edu/~amc/Par/
+.RE
+.LP
+Note that all of these addresses could change anytime
+after August 1996.  I'll try to leave forward pointers.
