@@ -1,17 +1,17 @@
   *********************
   * releasenotes      *
-  * for Par 1.50      *
-  * Copyright 1996 by *
+  * for Par 1.51      *
+  * Copyright 2000 by *
   * Adam M. Costello  *
   *********************
 
 
 Each entry below describes changes since the previous version.
 
-Par 1.00 released 25 July 1993
+Par 1.00 released 1993-Jul-25
     The first release.
 
-Par 1.10 released 2 August 1993
+Par 1.10 released 1993-Aug-02
     Fixed the following bugs:
         In reformat.c I used sprintf() but forgot to #include <stdio.h>.
         I forgot to verify that <width> > <prefix> + <suffix>.
@@ -38,7 +38,7 @@ Par 1.10 released 2 August 1993
         reason.
     Made all error messages begin with "par error:".
 
-Par 1.20 released 10 August 1993
+Par 1.20 released 1993-Aug-10
     Since Par 1.10 was distributed to no one, I've made some more
         incompatible changes in Par 1.20.
     Added the following features:
@@ -46,7 +46,7 @@ Par 1.20 released 10 August 1993
         Paragraphs are now separated by vacant lines, not just blank lines.
         <hang> now affects not only <prefix> but also <suffix>.
 
-Par 1.30 released 18 August 1993
+Par 1.30 released 1993-Aug-18
     Since Par 1.20 was posted to comp.sources.misc, I have made only
         backward-compatible changes in Par 1.30.
     Fixed the following bugs:
@@ -73,7 +73,7 @@ Par 1.30 released 18 August 1993
     Added a clean target to protoMakefile (suggested by hlj@posix.com (Hal
         Jespersen)).
 
-Par 1.31 released 7 September 1993
+Par 1.31 released 1993-Sep-07
     The version number is 1.31 rather than 1.40 because all added features
         are really just enhancements of existing features.
     Fixed the following bug:
@@ -94,7 +94,7 @@ Par 1.31 released 7 September 1993
     Added the term "charset syntax".
     Isolated the character set code in charset.c and charset.h.
 
-Par 1.32 released 13 September 1993
+Par 1.32 released 1993-Sep-13
     Fixed the following bugs:
         par could crash when the + or - operator was used with the B, P, and
             Q options.  Thanks go to splat@deakin.oz.au (Andrew Cashin) for
@@ -110,7 +110,7 @@ Par 1.32 released 13 September 1993
             splat@deakin.oz.au (Andrew Cashin) for asking about this.
     Made slight changes to the documentation.
 
-Par 1.40 released 10 Oct 1993
+Par 1.40 released 1993-Oct-10
     Fixed the following bugs:
         The phrase "containing at least two lines" was left out of the
             definition of "vacant line" in par.doc and par.1, although
@@ -143,7 +143,7 @@ Par 1.40 released 10 Oct 1993
     Made miscellaneous changes to the documentation, including the addition
         of the Quick Start section.
 
-Par 1.41 released 31 Oct 1993
+Par 1.41 released 1993-Oct-31
     Moved the former Release Notes section of par.doc into its own file.
     Fixed the following bugs:
         A couple of inconsistencies of style in the code (pointed out by
@@ -166,7 +166,7 @@ Par 1.41 released 31 Oct 1993
         for handling version numbers in patched versions of Par.
     Added a useful suggestion to protoMakefile.
 
-Par 1.50 released 11 Feb 1996
+Par 1.50 released 1996-Feb-11
     Added the following features:
         The T option (suggested by jjunker@eos.hitc.com (Jules Junker)).
         The b option.
@@ -185,3 +185,8 @@ Par 1.50 released 11 Feb 1996
     Added the Apologies section to par.doc and par.1.
     Made many other tweeks to the documentation.
     Removed the useless synopsis from the runtime help message.
+
+Par 1.51 released 2000-Feb-24
+    Updated the author contact information.
+    Relaxed the copyright restrictions.
+    Added comma to the recommended set of body characters in PARINIT.

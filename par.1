@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.50      *
-.\"* Copyright 1996 by *
+.\"* for Par 1.51      *
+.\"* Copyright 2000 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "11 February 1996" "Par 1.50" "USER COMMANDS"
+.TH par 1 "2000-Feb-24" "Par 1.51" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -87,10 +87,10 @@ them so that they all end in the same column.
 .B par
 is necessarily complex.  For those who wish to use
 it immediately and understand it later, assign the
-.SM PARINIT
+.B \s-1PARINIT\s0
 environment variable the following value:
 .IP
-rTbgqR B=.?_A_a Q=_s>|
+rTbgqR B=.,?_A_a Q=_s>|
 .LP
 The spaces, question mark, greater-than sign, and
 vertical bar will probably have to be escaped or
@@ -172,7 +172,7 @@ Types of characters:
 An upper case letter, lower case letter, or decimal digit.
 .IP "body character"
 A member of the set of characters defined by the
-.SM PARBODY
+.B \s-1PARBODY\s0
 environment variable (see the
 .SM ENVIRONMENT
 section) and/or the
@@ -182,13 +182,13 @@ option (see the
 section).
 .IP "protective character"
 A member  of the set of characters defined by the
-.SM PARPROTECT
+.B \s-1PARPROTECT\s0
 environment variable and/or the
 .B P
 option.
 .IP "quote character"
 A member of the set of characters defined by the
-.SM PARQUOTE
+.B \s-1PARQUOTE\s0
 environment variable and/or the
 .B Q
 option.
@@ -291,7 +291,10 @@ not protective and which contains only spaces.
 .IP "protected line"
 An input line whose first character is protective.
 .IP "bodiless line"
-A line which is order k bodiless for some k.
+A line which is order
+.I k
+bodiless for some
+.IR k .
 .IP "order \fIk\fP bodiless line"
 There is no such thing as an order 0 bodiless line.  Suppose
 .I S
@@ -401,7 +404,7 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.50\*U is printed on the output.  Of
+is read.  \*Qpar 1.51\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
@@ -420,7 +423,7 @@ is a plus/minus sign, the characters in the set defined by
 .I set
 are added/removed to/from the existing
 set of body characters defined by the
-.SM PARBODY
+.B \s-1PARBODY\s0
 environment variable and any previous B options.  It
 is okay to add characters that are already in the
 set or to remove characters that are not in the set.
@@ -781,34 +784,34 @@ It is an error if
 .IR suffix .
 .SH ENVIRONMENT
 .TP 1i
-.SM PARBODY
+.B \s-1PARBODY\s0
 Determines the initial set of body characters
 (which are used for determining comprelens
 and comsuflens), using charset syntax.  If
-.SM PARBODY
+.B \s-1PARBODY\s0
 is not set, the set of body characters is initially empty.
 .TP
-.SM PARINIT
+.B \s-1PARINIT\s0
 If set,
 .B par
 will read command line options from
-.SM PARINIT
+.B \s-1PARINIT\s0
 before it reads them from the command line.
 Within the value of
-.SM PARINIT\s0,
+.B \s-1PARINIT\s0,
 arguments are separated by white characters.
 .TP
-.SM PARPROTECT
+.B \s-1PARPROTECT\s0
 Determines the set of protective
 characters, using charset syntax.  If
-.SM PARPROTECT
+.B \s-1PARPROTECT\s0
 is not set, the set of protective
 characters is initially empty.
 .TP
-.SM PARQUOTE
+.B \s-1PARQUOTE\s0
 Determines the set of quote
 characters, using charset syntax.  If
-.SM PARQUOTE
+.B \s-1PARQUOTE\s0
 is not set, the set of quote characters initially
 contains only the greater-than sign (>) and the space.
 .LP
@@ -819,7 +822,7 @@ it and the rest of the string will not be seen by
 .BR par .
 .LP
 Note that the
-.SM PARINIT
+.B \s-1PARINIT\s0
 variable, together with the
 .BR B ,
 .BR P ,
@@ -930,8 +933,7 @@ If
 is 0, some words may get chopped up at this point (see
 .B R
 in the
-.SM
-OPTIONS
+.SM OPTIONS
 section).
 .LP
 The words are reassembled, preserving
@@ -1124,7 +1126,7 @@ Finally, the lines are printed to the output as the OP.
 If there are no errors,
 .B par
 returns
-.SM EXIT_SUCCESS
+.B \s-1EXIT_SUCCESS\s0
 (see
 .BR <stdlib.h> ).
 .LP
@@ -1132,7 +1134,7 @@ If there is an error, an error message
 will be printed to the output, and
 .B par
 will return
-.SM EXIT_FAILURE\s0\.
+.BR \s-1EXIT_FAILURE\s0 .
 If the error is local to a single paragraph, the preceeding
 paragraphs will have been output before the error
 was detected.  Line numbers in error messages are
@@ -1819,8 +1821,8 @@ a section of a shell script, for example), making them a pain
 to edit.  In my opinion, the world would be a nicer place if
 everyone stopped using tabs, so I'm doing my part by not letting
 .B par
-output them.  (Thanks to ets1@cs.wustl.edu (Eric
-T. Stuebe) for showing me the light about tabs.)
+output them.  (Thanks to Eric Stuebe for showing me the
+light about tabs.)
 .LP
 There is currently no way for the length of the
 output prefix to differ from the length of the
@@ -1839,8 +1841,8 @@ unclean.  It is nowhere near the optimal design for the
 larger task it now tries to address.  Its only redeeming
 features are that it is extremely useful (I find it
 indispensable), extremely portable, and very stable (between
-the release of version 1.41 on 31 Oct 1993 and the release
-of version 1.50 on 11 Feb 1996, no bugs were reported).
+the release of version 1.41 on 1993-Oct-31 and the release
+of version 1.51 on 2000-Feb-24, no bugs were reported).
 .LP
 Back in 1993 I had very little experience at writing
 documentation for users, so the documentation for Par
@@ -1862,20 +1864,7 @@ in the documentation), or if you have
 any suggestions, please send e-mail to:
 .RS
 .LP
-amc@cs.wustl.edu
-.RE
-.LP
-or send paper mail to:
-.RS
-.LP
-.nf
-Adam M. Costello
-Campus Box 1115
-Washington University
-One Brookings Dr.
-St. Louis, MO 63130-4899
-USA
-.fi
+amc@cs.berkeley.edu
 .RE
 .LP
 When reporting a bug, please include the exact input and
@@ -1886,8 +1875,8 @@ so that I can reproduce it.
 The latest release of Par is available on the Web at:
 .RS
 .LP
-http://www.cs.wustl.edu/~amc/Par/
+http://www.cs.berkeley.edu/~amc/Par/
 .RE
 .LP
-Note that all of these addresses could change anytime
-after August 1996.  I'll try to leave forward pointers.
+Note that all of these addresses could change anytime after
+2001-May.  I'll try to leave forward pointers.

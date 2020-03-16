@@ -1,7 +1,7 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.50      */
-/* Copyright 1996 by */
+/* for Par 1.51      */
+/* Copyright 2000 by */
 /* Adam M. Costello  */
 /*********************/
 

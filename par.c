@@ -1,7 +1,7 @@
 /*********************/
 /* par.c             */
-/* for Par 1.50      */
-/* Copyright 1996 by */
+/* for Par 1.51      */
+/* Copyright 2000 by */
 /* Adam M. Costello  */
 /*********************/
 
@@ -837,7 +837,7 @@ parcleanup:
 
   errout = Err ? stderr : stdout;
   if (*errmsg) fprintf(errout, "par error:\n%.*s", errmsg_size, errmsg);
-  if (version) fputs("par 1.50\n",errout);
+  if (version) fputs("par 1.51\n",errout);
   if (help)    fputs(usagemsg,errout);
 
   return *errmsg ? EXIT_FAILURE : EXIT_SUCCESS;
