@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -25,44 +25,73 @@
 #endif
 
 
-const char * const usagemsg =
+static const char * const usagemsg =
 "\n"
 "Usage:\n"
 "\n"
 "par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>] [h[<hang>]]\n"
-"    [p<prefix>] [s<suffix>] [w<width>] [c[<cap>]] [d[<div>]] [f[<fit>]]\n"
-"    [g[<guess>]] [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]]\n"
-"    [t[<touch>]]\n"
+"    [p[<prefix>]] [r[<repeat>]] [s[<suffix>]] [w[<width>]] [c[<cap>]]\n"
+"    [d[<div>]] [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]] "
+                                                                "[j[<just>]]\n"
+"    [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]\n"
 "\n"
-"help       usage message             |"
-                                  "Boolean parameters:\n"
-"version    version number            |"
-                                  "Option:   If 1:\n"
-"B<op><set> as <op> is =/+/-,         |"
-                                  "c<cap>    all words count as capitalized\n"
-"           replace/augment/diminish  |"
-                                  "d<div>    indentation delimits paragraphs\n"
-"           body chars by <set>       |"
-                                  "f<fit>    paragraphs are narrowed to\n"
-"P<op><set> ditto for protective chars|"
-                                  "          smoothen the right edge\n"
-"Q<op><set> ditto for quote chars     |"
-                                  "g<guess>  wide sentence breaks preserved\n"
-"h<hang>    first <hang> lines of each|"
-                                  "j<just>   paragraphs are justified\n"
-"           paragraph not searched for|"
-                                  "l<last>   last lines treated like others\n"
-"           common prefixes & suffixes|"
-                                  "q<quote>  vacant lines supplied between\n"
-"p<prefix>  prefix length             |"
-                                  "          different quote nesting levels\n"
-"s<suffix>  suffix length             |"
-                                  "R<Report> too-long words cause errors\n"
-"w<width>   max output line length    |"
-                                  "t<touch>  suffixes are moved left\n"
+"help       print usage message       "
+                                 "  ---------- Boolean parameters: ---------\n"
+"version    print version number      "
+                                 "  Option:   If 1:\n"
+"B<op><set> as <op> is =/+/-,         "
+                                 "  c<cap>    count all words as capitalized\n"
+"           replace/augment/diminish  "
+                                 "  d<div>    use indentation as a delimiter\n"
+"           body chars by <set>       "
+                                 "  e<expel>  discard superfluous lines\n"
+"P<op><set> ditto for protective chars"
+                                 "  f<fit>    narrow paragraph for best fit\n"
+"Q<op><set> ditto for quote chars     "
+                                 "  g<guess>  preserve wide sentence breaks\n"
+"h<hang>    skip IP's 1st <hang> lines"
+                                 "  i<invis>  hide lines inserted by <quote>\n"
+"           in scan for common affixes"
+                                 "  j<just>   justify paragraphs\n"
+"p<prefix>  prefix length             "
+                                 "  l<last>   treat last lines like others\n"
+"r<repeat>  if not 0, force bodiless  "
+                                 "  q<quote>  supply vacant lines between\n"
+"           lines to length <width>   "
+                                 "            different quote nesting levels\n"
+"s<suffix>  suffix length             "
+                                 "  R<Report> print error for too-long words\n"
+"w<width>   max output line length    "
+                                 "  t<touch>  move suffixes left\n"
 "\n"
 "See par.doc or par.1 (the man page) for more information.\n"
 ;
+
+
+/* Structure for recording properties of lines within segments: */
+
+typedef unsigned char lflag_t;
+
+typedef struct lineprop {
+  short p, s;     /* Length of the prefix and suffix of a bodiless */
+                  /* line, or the fallback prelen and suflen       */
+                  /* of the IP containing a non-bodiless line.     */
+  lflag_t flags;  /* Boolean properties (see below).               */
+  char rc;        /* The repeated character of a bodiless line.    */
+} lineprop;
+
+/* Flags for marking boolean properties: */
+
+static const lflag_t L_BODILESS = 1,  /* Bodiless line.             */
+                     L_INVIS    = 2,  /* Invisible line.            */
+                     L_FIRST    = 4,  /* First line of a paragraph. */
+                     L_SUPERF   = 8;  /* Superfluous line.          */
+
+#define isbodiless(prop) ( (prop)->flags & 1)
+#define    isinvis(prop) (((prop)->flags & 2) != 0)
+#define    isfirst(prop) (((prop)->flags & 4) != 0)
+#define   issuperf(prop) (((prop)->flags & 8) != 0)
+#define   isvacant(prop) (isbodiless(prop) && (prop)->rc == ' ')
 
 
 static int digtoint(char c)
@@ -111,12 +140,12 @@ static int strtoudec(const char *s, int *pn)
 static void parsearg(
   const char *arg, int *phelp, int *pversion, charset *bodychars,
   charset *protectchars, charset *quotechars, int *phang, int *pprefix,
-  int *psuffix, int *pwidth, int *pcap, int *pdiv, int *pfit, int *pguess,
-  int *pjust, int *plast, int *pquote, int *pReport, int *ptouch,
-  errmsg_t errmsg
+  int *prepeat, int *psuffix, int *pwidth, int *pcap, int *pdiv, int *pexpel,
+  int *pfit, int *pguess, int *pinvis, int *pjust, int *plast, int *pquote,
+  int *pReport, int *ptouch, errmsg_t errmsg
 )
 /* Parses the command line argument in *arg, setting the objects pointed to */
-/* by the other pointers as appropriate. *phelp and *pversion are boolean   */
+/* by the other pointers as appropriate.  *phelp and *pversion are boolean  */
 /* flags indicating whether the help and version options were supplied.     */
 {
   const char *savearg = arg;
@@ -164,23 +193,23 @@ static void parsearg(
     while (isdigit(*arg)) ++arg;
     oc = *arg;
     if (!oc) break;
-    n = 1;
+    n = -1;
     if (!strtoudec(++arg, &n)) goto badarg;
-    if (oc == 'h' || oc == 'p' || oc == 's' || oc == 'w') {
-      if (oc == 'h') *phang = n;
-      else {
-        if (!isdigit(*arg)) goto badarg;
-        if      (oc == 'w')   *pwidth  = n;
-        else if (oc == 'p')   *pprefix = n;
-        else  /* oc == 's' */ *psuffix = n;
-      }
+    if (oc == 'h' || oc == 'p' || oc == 'r' || oc == 's' || oc == 'w') {
+      if      (oc == 'h')   *phang   =  n >= 0 ? n :  1;
+      else if (oc == 'w')   *pwidth  =  n >= 0 ? n : 79;
+      else if (oc == 'p')   *pprefix =  n;
+      else if (oc == 'r')   *prepeat =  n >= 0 ? n :  3;
+      else  /* oc == 's' */ *psuffix =  n;
     }
     else {
       if (n > 1) goto badarg;
       if      (oc == 'c') *pcap    = n;
       else if (oc == 'd') *pdiv    = n;
+      else if (oc == 'e') *pexpel  = n;
       else if (oc == 'f') *pfit    = n;
       else if (oc == 'g') *pguess  = n;
+      else if (oc == 'i') *pinvis  = n;
       else if (oc == 'j') *pjust   = n;
       else if (oc == 'l') *plast   = n;
       else if (oc == 'q') *pquote  = n;
@@ -199,34 +228,48 @@ badarg:
 }
 
 
-static char **readlines(const charset *protectchars,
-                        const charset *quotechars, int quote, errmsg_t errmsg)
-
-/* Reads lines from stdin until EOF, or until a line beginning with a */
-/* protective character is encountered (in which case the protective  */
-/* character is pushed back onto the input stream), or until a blank  */
-/* line is encountered (in which case the newline is pushed back onto */
-/* the input stream).  Returns a NULL-terminated array of pointers to */
-/* individual lines, stripped of their newline characters.  Every NUL */
-/* character is stripped, and every white character is changed to a   */
-/* space unless it is a newline.  If quote is 1, vacant lines will be */
-/* supplied as described for the q option in par.doc.  Returns NULL   */
-/* on failure.                                                        */
+static char **readlines(
+  lineprop **pprops, const charset *protectchars,
+  const charset *quotechars, int invis, int quote, errmsg_t errmsg
+)
+/* Reads lines from stdin until EOF, or until a line beginning with a   */
+/* protective character is encountered (in which case the protective    */
+/* character is pushed back onto the input stream), or until a blank    */
+/* line is encountered (in which case the newline is pushed back onto   */
+/* the input stream).  Returns a NULL-terminated array of pointers to   */
+/* individual lines, stripped of their newline characters.  Every NUL   */
+/* character is stripped, and every white character is changed to a     */
+/* space unless it is a newline.  If quote is 1, vacant lines will be   */
+/* supplied as described for the q option in par.doc.  *pprops is set   */
+/* to an array of lineprop structures, one for each line, each of whose */
+/* flags field is either 0 or L_INVIS (the other fields are 0).  If     */
+/* there are no lines, *pprops is set to NULL.  The returned array may  */
+/* be freed with freelines().  *pprops may be freed with free() if      */
+/* it's not NULL.  On failure, returns NULL and sets *pprops to NULL.   */
 {
-  buffer *cbuf = NULL, *lbuf = NULL;
-  int c, empty, blank, nonquote, oldnonquote = 0, vlnlen;
+  buffer *cbuf = NULL, *lbuf = NULL, *lpbuf = NULL;
+  int c, empty, blank, firstline, qsonly, oldqsonly = 0, vlnlen;
   char ch, *ln = NULL, nullchar = '\0', *nullline = NULL, *qpend,
-       *oldln = &nullchar, *oldqpend = &nullchar, *p, *op, *vln = NULL,
-       **lines = NULL;
+       *oldln = NULL, *oldqpend = NULL, *p, *op, *vln = NULL, **lines = NULL;
+  lineprop vprop = { 0, 0, 0, '\0' }, iprop = { 0, 0, 0, '\0' };
 
+  /* oldqsonly, oldln, and oldquend don't really need to be initialized.   */
+  /* They are initialized only to appease compilers that try to be helpful */
+  /* by issuing warnings about unitialized automatic variables.            */
+
+  iprop.flags = L_INVIS;
   *errmsg = '\0';
+
+  *pprops = NULL;
 
   cbuf = newbuffer(sizeof (char), errmsg);
   if (*errmsg) goto rlcleanup;
   lbuf = newbuffer(sizeof (char *), errmsg);
   if (*errmsg) goto rlcleanup;
+  lpbuf = newbuffer(sizeof (lineprop), errmsg);
+  if (*errmsg) goto rlcleanup;
 
-  for (empty = blank = 1;  ; ) {
+  for (empty = blank = firstline = 1;  ; ) {
     c = getchar();
     if (c == EOF) break;
     if (c == '\n') {
@@ -242,38 +285,52 @@ static char **readlines(const charset *protectchars,
         for (qpend = ln;
              *qpend && csmember(*qpend, quotechars);
              ++qpend);
-        nonquote = *qpend != '\0';
+        for (p = qpend;  *p == ' ' || csmember(*p, quotechars);  ++p);
+        qsonly =  *p == '\0';
         while (qpend > ln && qpend[-1] == ' ') --qpend;
-        for (p = ln, op = oldln;
-             p < qpend && op < oldqpend && *p == *op;
-             ++p, ++op);
-        if (    p < qpend && op == oldqpend && oldnonquote
-            ||  p == qpend && op < oldqpend && nonquote   )
-          if (oldnonquote && nonquote) {
-            vlnlen = p - ln;
-            vln = malloc((vlnlen + 1) * sizeof (char));
-            if (!vln) {
-              strcpy(errmsg,outofmem);
-              goto rlcleanup;
+        if (!firstline) {
+          for (p = ln, op = oldln;
+               p < qpend && op < oldqpend && *p == *op;
+               ++p, ++op);
+          if (!(p == qpend && op == oldqpend))
+            if (!invis && (oldqsonly || qsonly)) {
+              if (oldqsonly) {
+                *op = '\0';
+                oldqpend = op;
+              }
+              if (qsonly) {
+                *p = '\0';
+                qpend = p;
+              }
             }
-            strncpy(vln,ln,vlnlen);
-            vln[vlnlen] = '\0';
-            additem(lbuf, &vln, errmsg);
-            if (*errmsg) goto rlcleanup;
-            vln = NULL;
-          }
-          else
-            if      (oldnonquote) ln[oldqpend - oldln] = '\0';
-            else if (nonquote)    oldln[qpend - ln]    = '\0';
+            else {
+              vlnlen = p - ln;
+              vln = malloc((vlnlen + 1) * sizeof (char));
+              if (!vln) {
+                strcpy(errmsg,outofmem);
+                goto rlcleanup;
+              }
+              strncpy(vln,ln,vlnlen);
+              vln[vlnlen] = '\0';
+              additem(lbuf, &vln, errmsg);
+              if (*errmsg) goto rlcleanup;
+              additem(lpbuf,  invis ? &iprop : &vprop,  errmsg);
+              if (*errmsg) goto rlcleanup;
+              vln = NULL;
+            }
+        }
         oldln = ln;
         oldqpend = qpend;
-        oldnonquote = nonquote;
+        oldqsonly = qsonly;
       }
       additem(lbuf, &ln, errmsg);
       if (*errmsg) goto rlcleanup;
       ln = NULL;
+      additem(lpbuf, &vprop, errmsg);
+      if (*errmsg) goto rlcleanup;
       clearbuffer(cbuf);
       empty = blank = 1;
+      firstline = 0;
     }
     else {
       if (empty) {
@@ -300,15 +357,20 @@ static char **readlines(const charset *protectchars,
     additem(lbuf, &ln, errmsg);
     if (*errmsg) goto rlcleanup;
     ln = NULL;
+    additem(lpbuf, &vprop, errmsg);
+    if (*errmsg) goto rlcleanup;
   }
 
   additem(lbuf, &nullline, errmsg);
+  if (*errmsg) goto rlcleanup;
+  *pprops = copyitems(lpbuf,errmsg);
   if (*errmsg) goto rlcleanup;
   lines = copyitems(lbuf,errmsg);
 
 rlcleanup:
 
   if (cbuf) freebuffer(cbuf);
+  if (lpbuf) freebuffer(lpbuf);
   if (lbuf) {
     if (!lines)
       for (;;) {
@@ -332,7 +394,7 @@ static void compresuflen(
 /* lines is an array of strings, up to but not including endline.  */
 /* Writes into *ppre and *psuf the comprelen and comsuflen of the  */
 /* lines in lines.  Assumes that they have already been determined */
-/* to be at least pre and suf. endline must not equal lines.       */
+/* to be at least pre and suf.  endline must not equal lines.      */
 {
   const char *start, *end, * const *line, *p1, *p2, *start2;
 
@@ -366,114 +428,156 @@ static void compresuflen(
 
 static void delimit(
   const char * const *lines, const char * const *endline,
-  const charset *bodychars, int div, int pre, int suf, char *tags
+  const charset *bodychars, int repeat, int div,
+  int pre, int suf, lineprop *props
 )
-/* lines is an array of strings, up to but not including endline.     */
-/* Sets each character in the parallel array tags to 'f', 'p', or     */
-/* 'v' according to whether the corresponding line in lines is the    */
-/* first line of a paragraph, some other line in a paragraph, or a    */
-/* vacant line, respectively, depending on the values of bodychars    */
-/* and div, according to "par.doc".  It is assumed that the comprelen */
-/* and comsuflen of the lines in lines have already been determined   */
-/* to be at least pre and suf, respectively.                          */
+/* lines is an array of strings, up to but not including     */
+/* endline.  Sets fields in each lineprop in the parallel    */
+/* array props as appropriate, except for the L_SUPERF flag, */
+/* which is never set.  It is assumed that the comprelen     */
+/* and comsuflen of the lines in lines have already been     */
+/* determined to be at least pre and suf, respectively.      */
 {
   const char * const *line, *end, *p, * const *nextline;
-  char *tag, *nexttag;
-  int anyvacant = 0, status;
+  char rc;
+  lineprop *prop, *nextprop;
+  int anybodiless = 0, status;
 
   if (endline == lines) return;
 
   if (endline == lines + 1) {
-    *tags = 'f';
+    props->flags |= L_FIRST;
+    props->p = pre, props->s = suf;
     return;
   }
 
   compresuflen(lines, endline, bodychars, pre, suf, &pre, &suf);
 
-  line = lines;
-  tag = tags;
+  line = lines, prop = props;
   do {
-    *tag = 'v';
+    prop->flags |= L_BODILESS;
+    prop->p = pre, prop->s = suf;
     for (end = *line;  *end;  ++end);
     end -= suf;
-    for (p = *line + pre;  p < end;  ++p)
-      if (*p != ' ') {
-        *tag = 'p';
-        break;
+    p = *line + pre;
+    rc =  p < end  ?  *p  :  ' ';
+    if (rc != ' ' && (!repeat || end - p < repeat))
+      prop->flags &= ~L_BODILESS;
+    else
+      while (p < end) {
+        if (*p != rc) {
+          prop->flags &= ~L_BODILESS;
+          break;
+        }
+        ++p;
       }
-    if (*tag == 'v') anyvacant = 1;
-    ++line;
-    ++tag;
+    if (isbodiless(prop)) {
+      anybodiless = 1;
+      prop->rc = rc;
+    }
+    ++line, ++prop;
   } while (line < endline);
 
-  if (anyvacant) {
-    line = lines;
-    tag = tags;
+  if (anybodiless) {
+    line = lines, prop = props;
     do {
-      if (*tag == 'v') {
-        ++line;
-        ++tag;
+      if (isbodiless(prop)) {
+        ++line, ++prop;
         continue;
       }
 
-      for (nextline = line + 1, nexttag = tag + 1;
-           nextline < endline && *nexttag == 'p';
-           ++nextline, ++nexttag);
+      for (nextline = line + 1, nextprop = prop + 1;
+           nextline < endline && !isbodiless(nextprop);
+           ++nextline, ++nextprop);
 
-      delimit(line,nextline,bodychars,div,pre,suf,tag);
+      delimit(line,nextline,bodychars,repeat,div,pre,suf,prop);
 
-      line = nextline;
-      tag = nexttag;
+      line = nextline, prop = nextprop;
     } while (line < endline);
 
     return;
   }
 
   if (!div) {
-    *tags = 'f';
+    props->flags |= L_FIRST;
     return;
   }
 
-  line = lines;
-  tag = tags;
+  line = lines, prop = props;
   status = ((*lines)[pre] == ' ');
   do {
     if (((*line)[pre] == ' ') == status)
-      *tag = 'f';
-    ++line;
-    ++tag;
+      prop->flags |= L_FIRST;
+    ++line, ++prop;
   } while (line < endline);
 }
 
 
+static void marksuperf(
+  const char * const * lines, const char * const * endline, lineprop *props
+)
+/* lines points to the first line of a segment, and endline to one  */
+/* line beyond the last line in the segment.  Sets L_SUPERF bits in */
+/* the flags fields of the props array whenever the corresponding   */
+/* line is superfluous.  L_BODILESS bits must already be set.       */
+{
+  const char * const *line, *p;
+  lineprop *prop, *mprop, dummy;
+  int inbody, num, mnum;
+
+  for (line = lines, prop = props;  line < endline;  ++line, ++prop)
+    if (isvacant(prop))
+      prop->flags |= L_SUPERF;
+
+  inbody = mnum = 0;
+  mprop = &dummy;
+  for (line = lines, prop = props;  line < endline;  ++line, ++prop)
+    if (isvacant(prop)) {
+      for (num = 0, p = *line;  *p;  ++p)
+        if (*p != ' ') ++num;
+      if (inbody || num < mnum)
+        mnum = num, mprop = prop;
+      inbody = 0;
+    } else {
+      if (!inbody) mprop->flags &= ~L_SUPERF;
+      inbody = 1;
+    }
+} 
+
+
 static void setaffixes(
   const char * const *inlines, const char * const *endline,
-  const charset *bodychars, const charset *quotechars,
+  const lineprop *props, const charset *bodychars, const charset *quotechars,
   int hang, int quote, int *pprefix, int *psuffix
 )
-/* inlines is an array of strings, up to but not including   */
-/* endline.  If either of *pprefix, *psuffix is less than 0, */
-/* sets it to a default value based on inlines, bodychars,   */
-/* quotechars, hang, and quote, according to "par.doc".      */
+/* inlines is an array of strings, up to but not including endline.  */
+/* inlines and endline must not be equal.  props is the the parallel */
+/* array of lineprop structures.  If either of *pprefix, *psuffix    */
+/* is less than 0, it is set to a default value based on inlines,    */
+/* bodychars, quotechars, hang, and quote, according to "par.doc".   */
 {
   int numin, pre, suf;
   const char *start, *p;
 
   numin = endline - inlines;
 
-  if ((*pprefix < 0 || *psuffix < 0) && numin > hang + 1)
+  if ((*pprefix < 0 || *psuffix < 0)  &&  numin > hang + 1)
     compresuflen(inlines + hang, endline, bodychars, 0, 0, &pre, &suf);
 
   if (*pprefix < 0)
-    if (quote && numin == hang + 1) {
-      start = inlines[hang];
-      for (p = start;  *p && csmember(*p, quotechars);  ++p);
+    if (numin > hang + 1)
+      *pprefix = pre;
+    else {
+      start = endline[-1];
+      p = start + props->p;
+      if (quote)
+        while (*p && csmember(*p, quotechars))
+          ++p;
       *pprefix = p - start;
     }
-    else *pprefix = numin > hang + 1  ?  pre  :  0;
 
   if (*psuffix < 0)
-    *psuffix = numin > hang + 1  ?  suf  :  0;
+    *psuffix = numin > hang + 1  ?  suf  :  props->s;
 }
 
 
@@ -492,15 +596,16 @@ static void freelines(char **lines)
 
 main(int argc, const char * const *argv)
 {
-  int help = 0, version = 0, hang = 0, prefix = -1, suffix = -1, width = 72,
-      cap = 0, div = 0, fit = 0, guess = 0, just = 0, last = 0, quote = 0,
-      Report = 0, touch = -1, prefixbak, suffixbak, c;
+  int help = 0, version = 0, hang = 0, prefix = -1, repeat = 0, suffix = -1,
+      width = 72, cap = 0, div = 0, expel = 0, fit = 0, guess = 0, invis = 0,
+      just = 0, last = 0, quote = 0, Report = 0, touch = -1, prefixbak,
+      suffixbak, c, sawnonblank, oweblank, n, i;
   charset *bodychars = NULL, *protectchars = NULL, *quotechars = NULL;
-  char *parinit = NULL, *arg, **inlines = NULL, **endline,
-       *tags = NULL, **firstline, *firsttag, *end, **nextline, *nexttag,
-       **outlines = NULL, **line;
+  char *parinit = NULL, *arg, **inlines = NULL, **endline, **firstline, *end,
+       **nextline, **outlines = NULL, **line;
   const char *env, * const whitechars = " \f\n\r\t\v";
   errmsg_t errmsg = { '\0' };
+  lineprop *props = NULL, *firstprop, *nextprop;
 
 /* Process environment variables: */
 
@@ -539,8 +644,9 @@ main(int argc, const char * const *argv)
     arg = strtok(parinit,whitechars);
     while (arg) {
       parsearg(arg, &help, &version, bodychars, protectchars,
-               quotechars, &hang, &prefix, &suffix, &width, &cap, &div,
-               &fit, &guess, &just, &last, &quote, &Report, &touch, errmsg);
+               quotechars, &hang, &prefix, &repeat, &suffix,
+               &width, &cap, &div, &expel, &fit, &guess, &invis,
+               &just, &last, &quote, &Report, &touch, errmsg    );
       if (*errmsg || help || version) goto parcleanup;
       arg = strtok(NULL,whitechars);
     }
@@ -552,8 +658,9 @@ main(int argc, const char * const *argv)
 
   while (*++argv) {
     parsearg(*argv, &help, &version, bodychars, protectchars,
-             quotechars, &hang, &prefix, &suffix, &width, &cap, &div,
-             &fit, &guess, &just, &last, &quote, &Report, &touch, errmsg);
+             quotechars, &hang, &prefix, &repeat, &suffix,
+             &width, &cap, &div, &expel, &fit, &guess, &invis,
+             &just, &last, &quote, &Report, &touch, errmsg    );
     if (*errmsg || help || version) goto parcleanup;
   }
 
@@ -563,21 +670,32 @@ main(int argc, const char * const *argv)
 
 /* Main loop: */
 
-  for (;;) {
+  for (sawnonblank = 0, oweblank = 0; ; ) {
     for (;;) {
       c = getchar();
-      if (csmember((char) c, protectchars))
+      if (expel && c == '\n') {
+        oweblank = sawnonblank;
+        continue;
+      }
+      if (csmember((char) c, protectchars)) {
+        sawnonblank = 1;
+        if (oweblank) {
+          putchar('\n');
+          oweblank = 0;
+        }
         while (c != '\n' && c != EOF) {
           putchar(c);
           c = getchar();
         }
+      }
       if (c != '\n') break;
       putchar(c);
     }
     if (c == EOF) break;
     ungetc(c,stdin);
 
-    inlines = readlines(protectchars,quotechars,quote,errmsg);
+    inlines =
+      readlines(&props, protectchars, quotechars, invis, quote, errmsg);
     if (*errmsg) goto parcleanup;
 
     for (endline = inlines;  *endline;  ++endline);
@@ -587,36 +705,53 @@ main(int argc, const char * const *argv)
       continue;
     }
 
-    tags = malloc((endline - inlines) * sizeof(char));
-    if (!tags) {
-      strcpy(errmsg,outofmem);
-      goto parcleanup;
+    sawnonblank = 1;
+    if (oweblank) {
+      putchar('\n');
+      oweblank = 0;
     }
 
     delimit((const char * const *) inlines,
-            (const char * const *) endline, bodychars, div, 0, 0, tags);
+            (const char * const *) endline,
+            bodychars, repeat, div, 0, 0, props);
 
-    firstline = inlines;
-    firsttag = tags;
+    if (expel)
+      marksuperf((const char * const *) inlines,
+                 (const char * const *) endline, props);
+
+    firstline = inlines, firstprop = props;
     do {
-      if (*firsttag == 'v') {
-        for (end = *firstline;  *end;  ++end);
-        while (end > *firstline && end[-1] == ' ') --end;
-        *end = '\0';
-        puts(*firstline);
-        ++firsttag;
-        ++firstline;
+      if (isbodiless(firstprop)) {
+        if (!isinvis(firstprop) && !(expel && issuperf(firstprop))) {
+          for (end = *firstline;  *end;  ++end);
+          if (!repeat  ||  firstprop->rc == ' ' && !firstprop->s) {
+            while (end > *firstline && end[-1] == ' ') --end;
+            *end = '\0';
+            puts(*firstline);
+          }
+          else {
+            n = width - firstprop->p - firstprop->s;
+            if (n < 0) {
+              sprintf(errmsg,impossibility,5);
+              goto parcleanup;
+            }
+            printf("%.*s", firstprop->p, *firstline);
+            for (i = n;  i;  --i)
+              putchar(firstprop->rc);
+            puts(end - firstprop->s);
+          }
+        }
+        ++firstline, ++firstprop;
         continue;
       }
 
-      for (nexttag = firsttag + 1, nextline = firstline + 1;
-           nextline < endline && *nexttag == 'p';
-           ++nexttag, ++nextline);
+      for (nextline = firstline + 1, nextprop = firstprop + 1;
+           nextline < endline && !isbodiless(nextprop) && !isfirst(nextprop);
+           ++nextline, ++nextprop);
 
-      prefix = prefixbak;
-      suffix = suffixbak;
+      prefix = prefixbak, suffix = suffixbak;
       setaffixes((const char * const *) firstline,
-                 (const char * const *) nextline,
+                 (const char * const *) nextline, firstprop,
                  bodychars, quotechars, hang, quote, &prefix, &suffix);
       if (width <= prefix + suffix) {
         sprintf(errmsg,
@@ -627,8 +762,9 @@ main(int argc, const char * const *argv)
 
       outlines =
         reformat((const char * const *) firstline,
-                 (const char * const *) nextline, hang, prefix, suffix,
-                  width, cap, fit, guess, just, last, Report, touch, errmsg);
+                 (const char * const *) nextline,
+                 firstprop->p, firstprop->s, hang, prefix, suffix,
+                 width, cap, fit, guess, just, last, Report, touch, errmsg);
       if (*errmsg) goto parcleanup;
 
       for (line = outlines;  *line;  ++line)
@@ -637,15 +773,14 @@ main(int argc, const char * const *argv)
       freelines(outlines);
       outlines = NULL;
 
-      firsttag = nexttag;
-      firstline = nextline;
+      firstline = nextline, firstprop = nextprop;
     } while (firstline < endline);
-
-    free(tags);
-    tags = NULL;
 
     freelines(inlines);
     inlines = NULL;
+
+    free(props);
+    props = NULL;
   }
 
 parcleanup:
@@ -655,12 +790,12 @@ parcleanup:
   if (quotechars) freecharset(quotechars);
   if (parinit) free(parinit);
   if (inlines) freelines(inlines);
-  if (tags) free(tags);
+  if (props) free(props);
   if (outlines) freelines(outlines);
 
   if (*errmsg) printf("par error:\n%.*s", errmsg_size, errmsg);
-  if (version) puts("par 1.32");
+  if (version) puts("par 1.40");
   if (help)    fputs(usagemsg,stdout);
 
-  exit(*errmsg ? EXIT_FAILURE : EXIT_SUCCESS);
+  return *errmsg ? EXIT_FAILURE : EXIT_SUCCESS;
 }

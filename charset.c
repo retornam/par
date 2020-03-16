@@ -1,6 +1,6 @@
 /*********************/
 /* charset.c         */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -32,22 +32,24 @@
 #endif
 
 
+typedef unsigned char csflag_t;
+
 struct charset {
-  char *inlist;   /* Characters in inlist are in the set.                */
-  char *outlist;  /* Characters in outlist are not in the set.           */
-                  /* inlist and outlist must have no common characters.  */
-                  /* inlist and outlist may be NULL, which acts like "". */
-  short flags;    /* Characters in neither list are in the set if they   */
-                  /* belong to any of the classes indicated by flags.    */
+  char *inlist;    /* Characters in inlist are in the set.                */
+  char *outlist;   /* Characters in outlist are not in the set.           */
+                   /* inlist and outlist must have no common characters.  */
+                   /* inlist and outlist may be NULL, which acts like "". */
+  csflag_t flags;  /* Characters in neither list are in the set if they   */
+                   /* belong to any of the classes indicated by flags.    */
 };
 
 /* The following may be bitwise-OR'd together */
 /* to set the flags field of a charset:       */
 
-static const short CS_UCASE = 1,  /* Includes all upper case letters. */
-                   CS_LCASE = 2,  /* Includes all lower case letters. */
-                   CS_DIGIT = 4,  /* Includes all decimal digits.     */
-                   CS_NUL   = 8;  /* Includes the NUL character.      */
+static const csflag_t CS_UCASE = 1,  /* Includes all upper case letters. */
+                      CS_LCASE = 2,  /* Includes all lower case letters. */
+                      CS_DIGIT = 4,  /* Includes all decimal digits.     */
+                      CS_NUL   = 8;  /* Includes the NUL character.      */
 
 
 static int appearsin(char c, const char *str)
@@ -171,9 +173,9 @@ int csmember(char c, const charset *cset)
 }
 
 
-static charset *csud(int u, const charset *cset1,
-                     const charset *cset2, errmsg_t errmsg)
-
+static charset *csud(
+  int u, const charset *cset1, const charset *cset2, errmsg_t errmsg
+)
 /* Returns the union of cset1 and cset2 if u is 1, or the set    */
 /* difference cset1 - cset2 if u is 0.  Returns NULL on failure. */
 {

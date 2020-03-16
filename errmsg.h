@@ -1,6 +1,6 @@
 /*********************/
 /* errmsg.h          */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -28,7 +28,11 @@ typedef char errmsg_t[errmsg_size];
 /* being careful not to overrun the space.                            */
 
 
-extern const char * const outofmem;  /* "Out of memory.\n" */
+extern const char * const outofmem;
+  /* "Out of memory.\n" */
+
+extern const char * const impossibility;
+  /* "Impossibility #%d has occurred.  Please report it.\n" */
 
 
 #endif

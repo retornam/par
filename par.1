@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.32      *
+.\"* for Par 1.40      *
 .\"* Copyright 1993 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "13 September 1993" "Par 1.32" "USER COMMANDS"
+.TH par 1 "10 October 1993" "Par 1.40" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -25,11 +25,13 @@ par \- filter for reformatting paragraphs
 .OP P opset
 .OP Q opset
 .OP h \*Ohang\*C
-.OP p prefix
-.OP s suffix
-.OP w width
+.OP p \*Oprefix\*C
+.OP r \*Orepeat\*C
+.OP s \*Osuffix\*C
+.OP w \*Owidth\*C
 .OP c \*Ocap\*C
 .OP d \*Odiv\*C
+.OP e \*Oexpel\*C
 .OP f \*Ofit\*C
 .OP g \*Oguess\*C
 .OP j \*Ojust\*C
@@ -46,14 +48,14 @@ par \- filter for reformatting paragraphs
 .el .ds U ""
 .de IT
 .LP
-\h'-\w"\\$1\ "u'\\$1\ \\$2 \\$3 \\$4 \\$5 \\$6 \\$7 \\$8 \\$9
+\h'-\w'\\$1\ 'u'\\$1\ \\$2 \\$3 \\$4 \\$5 \\$6 \\$7 \\$8 \\$9
 ..
 .LP
 .B par
-is a filter which copies its input to its output,
-changing all white characters (except newlines) to
-spaces, and reformatting each paragraph.  Paragraphs are
-separated by protected, blank, and vacant lines, (see the
+is a filter which copies its input to its output, changing
+all white characters (except newlines) to spaces, and
+reformatting each paragraph.  Paragraphs are separated
+by protected, blank, and bodiless lines, (see the
 .SM TERMINOLOGY
 section for definitions), and optionally
 delimited by indentation (see the
@@ -77,6 +79,26 @@ to make an eye-pleasing paragraph.
 .LP
 If there are suffixes, spaces are inserted before
 them so that they all end in the same column.
+.SH QUICK START
+.LP
+.B par
+is necessarily complex.  For those who wish to
+use it immediately and understand it later,
+assign the following environment variables:
+.TP "\w'PARQUOTE 'u"
+.SM PARBODY
+= ._A_a
+.TP
+.SM PARINIT
+= Rgqr
+.TP
+.SM PARQUOTE
+= _s>|
+.LP
+The greater-than sign and the vertical bar in the value of
+.SM PARQUOTE
+will probably have to be escaped or quoted to
+prevent your shell from interpreting them.
 .SH TERMINOLOGY
 .LP
 Miscellaneous terms:
@@ -154,11 +176,11 @@ return, tab, or vertical tab.
 Functions:
 .RS
 .IP comprelen
-The comprelen of a non-empty set of lines is the
+The comprelen of a non-empty sequence of lines is the
 length of the longest string of non-body characters
 appearing at the beginning of every line in the set.
 .IP comsuflen
-Given a non-empty set
+Given a non-empty sequence
 .I S
 of lines, let
 .I p
@@ -181,6 +203,16 @@ of all initial spaces except the last.  The length of
 .I c
 is the comsuflen of
 .IR S .
+.IP "fallback prelen (suflen)"
+The fallback prelen (suflen) of an IP is: the comprelen
+(comsuflen) of the IP, if the IP contains at least two
+lines; otherwise, the comprelen (comsuflen) of the
+block containing the IP, if the block contains at least
+two lines; otherwise, the length of the longer of the
+prefixes (suffixes) of the bodiless lines just above and
+below the block, if the segment containing the block
+has any bodiless lines; otherwise, 0.  (See below for
+the definitions of block, segment, and bodiless line.)
 .IP quoteprefix
 The quoteprefix of a line is the longest string of quote
 characters appearing at the beginning of the line, after
@@ -194,13 +226,17 @@ An empty line, or a line whose first character is
 not protective and which contains only spaces.
 .IP "protected line"
 An input line whose first character is protective.
-.IP "vacant line"
-Any line which can be shown to be vacant by a finite number
-of applications of the following recursive rule:  Suppose
+.IP "bodiless line"
+A line which is order k bodiless for some k.
+.IP "order \fIk\fP bodiless line"
+There is no such thing as an order 0 bodiless line.  Suppose
 .I S
-is a subsequence of a segment (see below)
-bounded above and below by vacant lines or
-by the beginning/end of the segment.  Let
+is a a contiguous subsequence of a segment (see below)
+containing at least two lines, containing no order
+.IR k \-1
+bodiless lines, bounded above and below by order
+.IR k \-1
+bodiless lines and/or the beginning/end of the segment.  Let
 .I p
 and
 .I s
@@ -210,9 +246,37 @@ Any member of
 .I S
 which, if stripped of its first
 .I p
-characters and last
+and last
 .I s
-characters, would be blank, is vacant.
+characters, would be blank (or, if the parameter
+.I repeat
+is non-zero, would consist of the
+same character repeated at least
+.I repeat
+times), is order
+.I k
+bodiless.  The first
+.I p
+characters of the bodiless line
+comprise its prefix; the last
+.I s
+characters comprise its suffix.  The character which repeats
+in the middle is called its repeat character.  If the middle
+is empty, the space is taken to be its repeat character.
+.IP "vacant line"
+A bodiless line whose repeat character is the space.
+.IP "superfluous line"
+Only blank and vacant lines may be superfluous.  If
+contiguous vacant lines lie at the beginning or end
+of a segment, they are all superfluous.  But if they
+lie between two non-vacant lines within a segment,
+then all are superfluous except one--the one which
+contains the fewest non-spaces.  In case of a tie,
+the first of the tied lines is chosen.  Similarly, if
+contiguous blank lines lie outside of any segments
+at the beginning or end of the input, they are all
+superfluous.  But if they lie between two segments and/or
+protected lines, then all are superfluous except the first.
 .RE
 .LP
 Groups of lines:
@@ -222,8 +286,8 @@ A contiguous sequence of input lines containing no protected
 or blank lines, bounded above and below by protected
 lines, blank lines, and/or the beginning/end of the input.
 .IP block
-A contiguous subsequence of a segment containing
-no vacant lines, bounded above and below by vacant
+A contiguous subsequence of a segment containing no
+bodiless lines, bounded above and below by bodiless
 lines and/or the beginning/end of the segment.
 .RE
 .LP
@@ -273,7 +337,7 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.32\*U is printed on the output.  Of
+is read.  \*Qpar 1.40\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
@@ -310,19 +374,23 @@ option, except that it applies
 to the set of quote characters.
 .LP
 All remaining options are used to set values of
-parameters.  Values set by command line options hold
-for all paragraphs.  Unset parameters are given default
-values.  Any unset parameters whose default values depend
-on the IP are recomputed separately for each paragraph.
+parameters.  Values set by command line options hold for all
+paragraphs.  Unset parameters are given default values.  Any
+parameters whose default values depend on the IP (namely
+.I prefix
+and
+.IR suffix ),
+if left unset, are recomputed separately for each paragraph.
 .LP
 The approximate role of each
 variable is described here.  See the
 .SM DETAILS
 section for the rest of the story.
 .LP
-The first four parameters,
+The first five parameters,
 .IR hang ,
 .IR prefix ,
+.IR repeat ,
 .IR suffix ,
 and
 .IR width ,
@@ -342,60 +410,90 @@ and
 .B s
 options.)
 .TP
-.BI p prefix
+.BI p\fR[ prefix\fR]
 The first
 .I prefix
 characters of each line of the OP are copied from the first
 .I prefix
 characters of the corresponding line
 of the IP.  If there are more than
-.IR hang \ +\ 1
+.IR hang +1
 lines in the IP, the default value is the comprelen
 of all the lines in the IP except the first
 .I hang
-of them.  If there are exactly
-.IR hang \ +\ 1
-lines in the IP and
+of them.  Otherwise, the default value is
+the fallback prelen of the IP, plus, if
 .I quote
-is 1, the default value is the number of
-leading quote characters in the last line.
-Otherwise, the default value is 0.  (See also the
+is 1, the number of quote characters
+immediately following the first fallback prelen
+characters of the last line of the IP.  If the
+.B p
+option is given without a number,
+.I prefix
+is unset, even if it had been set earlier.  (See also the
 .B h
 and
 .B q
 options.)
 .TP
-.BI s suffix
+.BI r\fR[ repeat\fR]
+If
+.I repeat
+is non-zero, bodiless lines have the number of
+instances of their repeat characters increased
+or decreased until the length of the line is
+.IR width .
+The exact value of
+.I repeat
+affects the definition of bodiless
+line.  Defaults to 0.  If the
+.B r
+option is given without a number, the
+value 3 is inferred.  (See also the
+.B w
+option.)
+.TP
+.BI s\fR[ suffix\fR]
 The last
 .I suffix
 characters of each line of the OP are copied from the last
 .I suffix
 characters of the corresponding line
 of the IP.  If there are more than
-.IR hang \ +\ 1
+.IR hang +1
 lines in the IP, the default value is the comsuflen
 of all the lines of the IP except the first
 .I hang
-of them.  Otherwise the default value is 0.  (See also the
+of them.  Otherwise, the default value is
+the fallback suflen of the IP.  If the
+.B s
+option is given without a number,
+.I suffix
+is unset, even if it had been set earlier.  (See also the
 .B h
 option.)
 .TP
-.BI w width
-No line in the OP will contain more than
+.BI w\fR[ width\fR]
+No line in the OP may contain more than
 .I width
-characters, not including the
-trailing newlines.  Defaults to 72.
+characters, not including the trailing
+newlines.  Defaults to 72.  If the
+.B w
+option is given without a number, the value 79 is inferred.
 .LP
-The remaining eight parameters,
-.IR div,
-.IR fit,
-.IR guess,
-.IR just,
-.IR last,
-.IR quote,
-.IR Report,
+The remaining eleven parameters,
+.IR cap ,
+.IR div ,
+.IR expel ,
+.IR fit ,
+.IR guess ,
+.IR invis ,
+.IR just ,
+.IR last ,
+.IR quote ,
+.IR Report ,
 and
-.IR touch,
+.IR touch ,
 may be set to either 0 or 1.  If the number is
 absent in the option, the value 1 is inferred.
 .TP 1i
@@ -405,7 +503,7 @@ If
 is 1, all words are considered capitalized.  This
 currently affects only the application of the
 .B g
-option.
+option.  Defaults to 0.
 .TP
 .BI d\fR[ div\fR]
 If
@@ -416,10 +514,16 @@ is 1, each block is subdivided into IPs as follows:  Let
 .I p
 be the comprelen of the block.
 Let a line's status be 1 if its
-.RI ( p \ +\ 1)st
+.RI ( p +1)st
 character is a space, 0 otherwise.  Every line in the
 block whose status is the same as the status of the
 first line will begin a new paragraph.  Defaults to 0.
+.TP
+.BI e\fR[ expel\fR]
+If
+.I expel
+is 1, superfluous lines are withheld
+from the output.  Defaults to 0.
 .TP
 .BI f\fR[ fit\fR]
 If
@@ -428,7 +532,7 @@ is 1 and
 .I just
 is 0,
 .B par
-will try to make the lines in the OP as nearly the
+tries to make the lines in the OP as nearly the
 same length as possible, even if it means making
 the OP narrower.  Defaults to 0.  (See also the
 .B j
@@ -449,6 +553,19 @@ are separated by more than one space, or by a line break,
 will insure that they are separated by two spaces,
 or by a line break, in the output.  Defaults to 0.
 .TP
+.BI i\fR[ invis\fR]
+If
+.I invis
+is 1, then vacant lines inserted because
+.I quote
+is 1 are invisible; that is, they are not output.  If
+.I quote
+is 0,
+.I invis
+has no effect.  Defaults to 0.  (See also the
+.B q
+option.)
+.TP
 .BI j\fR[ just\fR]
 If
 .I just
@@ -459,11 +576,7 @@ so that all lines in the OP have length
 .I width
 (except the last, if
 .I last
-is 0).
-.I fit
-has no effect if
-.I just
-is 1.  Defaults to 0.  (See also the
+is 0).  Defaults to 0.  (See also the
 .BR w ,
 .BR l ,
 and
@@ -481,36 +594,40 @@ the same length as the others.  Defaults to 0.
 .BI q\fR[ quote\fR]
 If
 .I quote
-is 1, then before each segment is scanned for vacant lines,
+is 1, then before each segment
+is scanned for bodiless lines,
 .B par
-will supply vacant lines between different quotation nesting
+supplies vacant lines between different quotation nesting
 levels as follows:  For each pair of adjacent lines in
-the segment, if the quoteprefix of one is a prefix of
-(but not the same as) the quoteprefix of the other, and
-the line containing the shorter quoteprefix contains a
-non-quote character, then one of two changes will be made:
-If the other line also contains a non-quote character,
-then a line consisting of the smaller quoteprefix will
-be inserted between the two lines; otherwise, the longer
-quoteprefix will be truncated to match the shorter one.
+the segment, (scanned from the top down) which have
+different quoteprefixes, one of two actions is taken.  If
+.I invis
+is 0, and either line consists entirely of quote
+characters and spaces (or is empty), that line
+is truncated to the longest common prefix of the
+two lines (both are truncated if both qualify).
+Otherwise, a line consisting of the longest common
+prefix of the two lines is inserted between them.
 .I quote
 also affects the default value of
 .IR prefix .
 Defaults to 0.  (See also the
 .B p
-option.)
+and
+.B i
+options.)
 .TP
 .BI R\fR[ Report\fR]
 If
 .I Report
-is 1, it will be considered an error
-for an input word to contain more than
+is 1, it is considered an error for
+an input word to contain more than
 .IR L \ =
 .RI ( width \ -
 .IR prefix \ -
 .IR suffix )
 characters.  Otherwise, such
-words will be chopped after each
+words are chopped after each
 .IR L th
 character into shorter words.  Defaults to 0.  It
 is recommended that this option be included in
@@ -575,10 +692,7 @@ Determines the initial set of body characters
 (which are used for determining comprelens
 and comsuflens), using charset syntax.  If
 .SM PARBODY
-is not set, the set of body characters
-is initially empty.  A good value for
-.SM PARBODY
-might be \*Q_A_a.\*U, but it depends on the application.
+is not set, the set of body characters is initially empty.
 .TP
 .SM PARINIT
 If set,
@@ -625,9 +739,28 @@ output.  All other input lines, as they are read, have any
 characters removed, and every white character
 (except newlines) turned into a space.
 .LP
-Blank lines in the input are transformed into empty
-lines in the output.  Vacant lines in the input are
-stripped of trailing spaces before being output.
+Blank lines in the input are transformed
+into empty lines in the output.
+.LP
+If
+.I repeat
+is 0, all bodiless lines are vacant, and they are all
+simply stripped of trailing spaces before being output.  If
+.I repeat
+is 1, only vacant lines whose suffixes have length
+0 are treated that way; other bodiless lines have
+the number of instances of their repeat characters
+increased or decreased until the length of the line is
+.IR width .
+.LP
+If
+.I expel
+is 1, superfluous lines are not output.  If
+.I quote
+and
+.I invis
+are both 1, there may be invisible
+lines; they are not output.
 .LP
 The input is divided into segments, which are
 divided into blocks, which are divided into
@@ -791,7 +924,11 @@ To each line is prepended
 .I prefix
 characters.  Let
 .I n
-be the number of lines in the IP.  The
+be the number of lines in the IP, let
+.I fp
+be the fallback prelen of the IP, and let
+.I fs
+be the fallback suflen of the IP.  The
 characters which are prepended to the
 .IR i th
 line are chosen as follows:
@@ -821,7 +958,11 @@ and
 .I n
 <=
 .IR hang ,
-the characters are all spaces.
+the first
+.RI min( fp , prefix )
+of the characters are copied from the ones
+that were removed from the beginning of the
+last input line, and the rest are all spaces.
 .RE
 .LP
 Then to each line is appended
@@ -843,11 +984,23 @@ input line.
 .I i
 >
 .I n
-> 0, the characters are copied from the ones that
+>
+.IR hang ,
+the characters are copied from the ones that
 were removed from the end of the last input line.
 .IT 3) If
+.I i
+>
 .I n
-= 0, the characters are all spaces.
+and
+.I n
+<=
+.IR hang ,
+the first
+.RI min( fs , suffix )
+of the characters are copied from the ones
+that were removed from the beginning of the
+last input line, and the rest are all spaces.
 .RE
 .LP
 Finally, the lines are printed to the output as the OP.
@@ -965,6 +1118,7 @@ features of an editor, such as the ! commands of
 The rest of this section is a series of
 before-and-after pictures showing some typical uses of
 .BR par .
+In all cases, no environment variables are set.
 .LP
 Before:
 .VS
@@ -1197,38 +1351,107 @@ After
 .LP
 Before:
 .VS
-        1. We the people of the United States.
-        2. In order to form a more perfect union.
-        3. Establish justice, ensure domestic tranquility.
-        4. Provide for the common defense
-        5. Promote the general welfare.
-        6. And secure the blessing of liberty
-           to ourselves and our posterity.
-        7. Do ordain and establish the Constitution.
-        8. Of the United States of America.
+        # 1. We the people of the United States.
+        # 2. In order to form a more perfect union.
+        # 3. Establish justice, ensure domestic
+        #    tranquility.
+        # 4. Provide for the common defense
+        # 5. Promote the general welfare.
+        # 6. And secure the blessing of liberty
+        #    to ourselves and our posterity.
+        # 7. Do ordain and establish the Constitution.
+        # 8. Of the United States of America.
 .VE
 .LP
 After
-.CM "par 35p11dh"
+.CM "par 37p13dh"
 .VS
-        1. We the people of the
-           United States.
-        2. In order to form a more
-           perfect union.
-        3. Establish justice,
-           ensure domestic
-           tranquility.
-        4. Provide for the common
-           defense
-        5. Promote the general
-           welfare.
-        6. And secure the blessing
-           of liberty to ourselves
-           and our posterity.
-        7. Do ordain and establish
-           the Constitution.
-        8. Of the United States of
-           America.
+        # 1. We the people of the
+        #    United States.
+        # 2. In order to form a more
+        #    perfect union.
+        # 3. Establish justice,
+        #    ensure domestic
+        #    tranquility.
+        # 4. Provide for the common
+        #    defense
+        # 5. Promote the general
+        #    welfare.
+        # 6. And secure the blessing
+        #    of liberty to ourselves
+        #    and our posterity.
+        # 7. Do ordain and establish
+        #    the Constitution.
+        # 8. Of the United States of
+        #    America.
+.VE
+.LP
+Before:
+.VS
+        /*****************************************/
+        /*   We the people of the United States, */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic    */
+        /* tranquility,                          */
+        /*                                       */
+        /*                                       */
+        /*   [ provide for the common defense, ] */
+        /*   [ promote the general welfare,    ] */
+        /*   [ and secure the blessing of liberty ] */
+        /*   [ to ourselves and our posterity, ] */
+        /*   [                                 ] */
+        /*                                       */
+        /* do ordain and establish the Constitution */
+        /* of the United States of America.       */
+        /******************************************/
+.VE
+.LP
+After
+.CM "par 42r"
+.VS
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*   [                        ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
+.VE
+.LP
+Or after
+.CM "par 42re"
+.VS
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
 .VE
 .LP
 Before:
@@ -1236,10 +1459,13 @@ Before:
         Joe Public writes:
         > Jane Doe writes:
         > >
+        > >
         > > I can't find the source for uncompress.
         > Oh no, not again!!!
         >
+        >
         > Isn't there a FAQ for this?
+        >
         >
         That wasn't very helpful, Joe. Jane,
         just make a link from uncompress to compress.
@@ -1252,6 +1478,28 @@ After
 
         > Jane Doe writes:
         >
+        >
+        > > I can't find the source for
+        > > uncompress.
+        >
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+.VE
+.LP
+Or after
+.CM "par 40qe"
+.VS
+        Joe Public writes:
+
+        > Jane Doe writes:
+        >
         > > I can't find the source for
         > > uncompress.
         >
@@ -1259,6 +1507,41 @@ After
         >
         > Isn't there a FAQ for this?
 
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+.VE
+.LP
+Or after
+.CM "par 40qi"
+.VS
+        Joe Public writes:
+        > Jane Doe writes:
+        > >
+        > >
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+        >
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+.VE
+.LP
+Or after
+.CM "par 40qie"
+.VS
+        Joe Public writes:
+        > Jane Doe writes:
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
         That wasn't very helpful, Joe.
         Jane, just make a link from
         uncompress to compress.
@@ -1371,8 +1654,19 @@ example), making them a pain to edit.  In my opinion, the
 world would be a nicer place if everyone stopped using
 tabs (so I'm doing my part by not supporting them in
 .BR par .)
-(Thanks to ets1@cs.wustl.edu (Eric T. Stuebe)
-for showing me the light about tabs.)
+If you find yourself editing a file containing tabs, the
+first thing you should do is run the whole file through
+.BR expand ,
+a standard
+.SM UNIX
+command (if there is such a thing) that
+replaces tabs with spaces while preserving the
+appearance of the file.  If you're not in a
+.SM UNIX
+environment, then hopefully someone has ported
+.B expand
+to your system.  (Thanks to ets1@cs.wustl.edu (Eric
+T. Stuebe) for showing me the light about tabs.)
 .LP
 There is currently no way for the length of the
 output prefix to differ from the length of the

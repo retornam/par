@@ -1,6 +1,6 @@
 /*********************/
 /* charset.h         */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/

@@ -1,12 +1,12 @@
   *********************
   * par.doc           *
-  * for Par 1.32      *
+  * for Par 1.40      *
   * Copyright 1993 by *
   * Adam M. Costello  *
   *********************
 
 
-    Par 1.32 is a package containing:
+    Par 1.40 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
@@ -22,6 +22,7 @@ Contents
     Compilation
     Synopsis
     Description
+   *Quick Start
     Terminology
     Options
     Environment
@@ -34,7 +35,7 @@ Contents
 
 File List
 
-    The Par 1.32 package is always distributed with at least the following
+    The Par 1.40 package is always distributed with at least the following
     files:
 
         buffer.c
@@ -190,9 +191,42 @@ Release Notes
                 neither line is vacant, I consider this a bug in the design
                 of the <quote> feature.  Now the longer quoteprefix will be
                 truncated to match the shorter one, and will therefore be
-                vacant.  (Inspired by a question from splat@deakin.oz.au
-                (Andrew Cashin).)
+                vacant.  Thanks go to splat@deakin.oz.au (Andrew Cashin) for
+                asking about this.
         Made slight changes to the documentation.
+
+    Par 1.40 released 10 Oct 1993
+        Fixed the following bugs:
+            The phrase "containing at least two lines" was left out of the
+                definition of "vacant line" in par.doc and par.1, although
+                the code implemented the correct definition.  (The phrase
+                now appears in the definition of "order <k> bodiless line".)
+            There was still a flaw in the design of the <quote> feature.  If
+                two adjacent lines had quoteprefixes neither of which was a
+                prefix of the other, no line would be inserted between them,
+                possibly causing other inserted lines not to be vacant.  Now
+                it should be true that every line inserted or truncated by
+                the <quote> feature will turn out to be vacant.
+            When <hang> began affecting the default value of <suffix> (as of
+                Par 1.20), it should also have begun affecting the choice of
+                source of characters for the suffixes of lines in OPs.
+        Added the following features:
+            The i option (suggested by barrett@ee.und.ac.za (Alan Barrett)).
+            The e option (inspired by a suggestion from tim@ben.dciem.dnd.ca
+                (Tim Pointing)).
+            The r option.
+            The p, s, and w options are now accepted without numbers.
+            par no longer gives up so easily when choosing default values
+                for <prefix> and <suffix> for an IP with less than <hang>+2
+                lines, nor when choosing the source of characters for the
+                prefix and suffix of the <i>th output line when <i> > <n>
+                and <n> <= <hang>.  These are incompatible changes, but I
+                cannot imagine anyone preferring the old behavior.
+        Altered the terminology:
+            Added the terms "bodiless line" (a generalization of "vacant
+                line"), "fallback prelen", and "fallback suflen".
+        Made miscellaneous changes to the documentation, including the
+            addition of the Quick Start section.
 
 
 Compilation
@@ -207,7 +241,7 @@ Compilation
     will come in handy in the future.
 
     If your compiler warns you about a pointer to a constant being converted
-    to a pointer to a non-constant in line 507 of reformat.c, ignore it.
+    to a pointer to a non-constant in line 521 of reformat.c, ignore it.
     Your compiler (like mine) is in error.  What it thinks is a pointer to
     a constant is actually a pointer to a pointer to a constant, which is
     something quite different.  The conversion is legal, and I don't think a
@@ -225,9 +259,9 @@ Compilation
 
 Synopsis
     par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>] [h[<hang>]]
-        [p<prefix>] [s<suffix>] [w<width>] [c[<cap>]] [d[<div>]] [f[<fit>]]
-        [g[<guess>]] [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]]
-        [t[<touch>]]
+        [p[<prefix>]] [r[<repeat>]] [s[<suffix>]] [w[<width>]] [c[<cap>]]
+        [d[<div>]] [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]]
+        [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]
 
     Things enclosed in [square brackets] are optional.  Things enclosed in
     <angle brackets> are parameters.
@@ -237,7 +271,7 @@ Description
 
     par is a filter which copies its input to its output, changing all white
     characters (except newlines) to spaces, and reformatting each paragraph.
-    Paragraphs are separated by protected, blank, and vacant lines (see
+    Paragraphs are separated by protected, blank, and bodiless lines (see
     the Terminology section for definitions), and optionally delimited by
     indentation (see the d option in the Options section).
 
@@ -251,6 +285,22 @@ Description
 
      If there are suffixes, spaces are inserted before them so that they all
      end in the same column.
+
+
+Quick Start
+
+    par is necessarily complex.  For those who wish to use it immediately
+    and understand it later, assign the following environment variables:
+
+        PARBODY    = ._A_a
+
+        PARINIT    = Rgqr
+
+        PARQUOTE   = _s>|
+
+    The greater-than sign and the vertical bar in the value of PARQUOTE
+    will probably have to be escaped or quoted to prevent your shell from
+    interpreting them.
 
 
 Terminology
@@ -318,17 +368,27 @@ Terminology
     Functions:
 
         comprelen
-            The comprelen of a non-empty set of lines is the length of
-            the longest string of non-body characters appearing at the
+            The comprelen of a non-empty sequence of lines is the length
+            of the longest string of non-body characters appearing at the
             beginning of every line in the set.
 
         comsuflen
-            Given a non-empty set <S> of lines, let <p> be the comprelen of
-            <S>.  Let <T> be the set of lines which result from stripping
-            the first <p> characters from each line in <S>.  Let <c> be the
-            longest string of non-body characters appearing at the end of
-            every line in <T>.  Strip <c> of all initial spaces except the
-            last.  The length of <c> is the comsuflen of <S>.
+            Given a non-empty sequence <S> of lines, let <p> be the
+            comprelen of <S>.  Let <T> be the set of lines which result from
+            stripping the first <p> characters from each line in <S>.  Let
+            <c> be the longest string of non-body characters appearing at
+            the end of every line in <T>.  Strip <c> of all initial spaces
+            except the last.  The length of <c> is the comsuflen of <S>.
+
+        fallback prelen (suflen)
+            The fallback prelen (suflen) of an IP is: the comprelen
+            (comsuflen) of the IP, if the IP contains at least two lines;
+            otherwise, the comprelen (comsuflen) of the block containing the
+            IP, if the block contains at least two lines; otherwise, the
+            length of the longer of the prefixes (suffixes) of the bodiless
+            lines just above and below the block, if the segment containing
+            the block has any bodiless lines; otherwise, 0.  (See below for
+            the definitions of block, segment, and bodiless line.)
 
         quoteprefix
             The quoteprefix of a line is the longest string of quote
@@ -344,14 +404,39 @@ Terminology
         protected line
             An input line whose first character is protective.
 
+        bodiless line
+            A line which is order <k> bodiless for some <k>.
+
+        order <k> bodiless line
+            There is no such thing as an order 0 bodiless line.  Suppose
+            <S> is a a contiguous subsequence of a segment (see below)
+            containing at least two lines, containing no order <k>-1
+            bodiless lines, bounded above and below by order <k>-1 bodiless
+            lines and/or the beginning/end of the segment.  Let <p> and <s>
+            be the comprelen and comsuflen of <S>.  Any member of <S> which,
+            if stripped of its first <p> and last <s> characters, would be
+            blank (or, if the parameter <repeat> is non-zero, would consist
+            of the same character repeated at least <repeat> times), is
+            order <k> bodiless.  The first <p> characters of the bodiless
+            line comprise its prefix; the last <s> characters comprise its
+            suffix.  The character which repeats in the middle is called its
+            repeat character.  If the middle is empty, the space is taken to
+            be its repeat character.
+
         vacant line
-            Any line which can be shown to be vacant by a finite number of
-            applications of the following recursive rule:  Suppose <S> is a
-            subsequence of a segment (see below) bounded above and below by
-            vacant lines or by the beginning/end of the segment.  Let <p>
-            and <s> be the comprelen and comsuflen of <S>.  Any member of
-            <S> which, if stripped of its first <p> characters and last <s>
-            characters, would be blank, is vacant.
+            A bodiless line whose repeat character is the space.
+
+        superfluous line
+            Only blank and vacant lines may be superfluous.  If contiguous
+            vacant lines lie at the beginning or end of a segment, they are
+            all superfluous.  But if they lie between two non-vacant lines
+            within a segment, then all are superfluous except one--the one
+            which contains the fewest non-spaces.  In case of a tie, the
+            first of the tied lines is chosen.  Similarly, if contiguous
+            blank lines lie outside of any segments at the beginning or end
+            of the input, they are all superfluous.  But if they lie between
+            two segments and/or protected lines, then all are superfluous
+            except the first.
 
     Groups of lines:
 
@@ -361,9 +446,9 @@ Terminology
             lines, and/or the beginning/end of the input.
 
         block
-            A contiguous subsequence of a segment containing no vacant lines,
-            bounded above and below by vacant lines and/or the beginning/end
-            of the segment.
+            A contiguous subsequence of a segment containing no bodiless
+            lines, bounded above and below by bodiless lines and/or the
+            beginning/end of the segment.
 
     Types of words:
 
@@ -392,7 +477,7 @@ Options
                 describing the options used by par.
 
     version     Causes all remaining arguments to be ignored.  No input is
-                read.  "par 1.31" is printed on the output.  Of course, this
+                read.  "par 1.40" is printed on the output.  Of course, this
                 will change in future releases of Par.
 
     B<op><set>  <op> is a single character, either an equal sign (=), a
@@ -414,58 +499,77 @@ Options
 
     All remaining options are used to set values of parameters.  Values set
     by command line options hold for all paragraphs.  Unset parameters are
-    given default values.  Any unset parameters whose default values depend
-    on the IP are recomputed separately for each paragraph.
+    given default values.  Any parameters whose default values depend on
+    the IP (namely <prefix> and <suffix>), if left unset, are recomputed
+    separately for each paragraph.
 
     The approximate role of each parameter is described here.  See the
     Details section for the rest of the story.
 
-    The first four parameters, <hang>, <prefix>, <suffix>, and <width>, may
-    be set to any unsigned decimal integer less than 10000.
+    The first five parameters, <hang>, <prefix>, <repeat>, <suffix>, and
+    <width>, may be set to any unsigned decimal integer less than 10000.
 
     h[<hang>]   Mainly affects the default values of <prefix> and <suffix>.
                 Defaults to 0.  If the h option is given without a number,
                 the value 1 is inferred.  (See also the p and s options.)
 
-    p<prefix>   The first <prefix> characters of each line of the OP
+    p[<prefix>] The first <prefix> characters of each line of the OP
                 are copied from the first <prefix> characters of the
                 corresponding line of the IP.  If there are more than
-                <hang> + 1 lines in the IP, the default value is the
-                comprelen of all the lines in the IP except the first <hang>
-                of them.  If there are exactly <hang> + 1 lines in the IP
-                and <quote> is 1, the default value is the number of leading
-                quote characters in the last line.  Otherwise the default
-                value is 0.  (See also the h and q options.)
+                <hang>+1 lines in the IP, the default value is the comprelen
+                of all the lines in the IP except the first <hang> of them.
+                Otherwise, the default value is the fallback prelen of the
+                IP, plus, if <quote> is 1, the number of quote characters
+                immediately following the first fallback prelen characters
+                of the last line of the IP.  If the p option is given
+                without a number, <prefix> is unset, even if it had been set
+                earlier.  (See also the h and q options.)
 
-    s<suffix>   The last <suffix> characters of each line of the OP
+    r[<repeat>] If <repeat> is non-zero, bodiless lines have the number of
+                instances of their repeat characters increased or decreased
+                until the length of the line is <width>.  The exact value of
+                <repeat> affects the definition of bodiless line.  Defaults
+                to 0.  If the r option is given without a number, the value
+                3 is inferred.  (See also the w option.)
+
+    s[<suffix>] The last <suffix> characters of each line of the OP
                 are copied from the last <suffix> characters of the
                 corresponding line of the IP.  If there are more than
-                <hang> + 1 lines in the IP, the default value is the
-                comsuflen of all the lines of the IP except the first <hang>
-                of them.  Otherwise the default value is 0.  (See also the h
+                <hang>+1 lines in the IP, the default value is the comsuflen
+                of all the lines in the IP except the first <hang> of them.
+                Otherwise, the default value is the fallback suflen of the
+                IP.  If the s option is given without a number, <suffix> is
+                unset, even if it had been set earlier.  (See also the h
                 option.)
 
-    w<width>    No line in the OP will contain more than <width> characters,
-                not including the trailing newlines.  Defaults to 72.
+    w[<width>]  No line in the OP may contain more than <width> characters,
+                not including the trailing newlines.  Defaults to 72.  If
+                the w option is given without a number, the value 79 is
+                inferred.
 
-    The remaining nine parameters, <cap>, <div>, <fit>, <guess>, <just>,
-    <last>, <quote>, <Report>, and <touch>, may be set to either 0 or 1.  If
-    the number is absent in the option, the value 1 is inferred.
+    The remaining eleven parameters, <cap>, <div>, <expel>, <fit>, <guess>,
+    <invis>, <just>, <last>, <quote>, <Report>, and <touch>, may be set to
+    either 0 or 1.  If the number is absent in the option, the value 1 is
+    inferred.
 
     c[<cap>]    If <cap> is 1, all words are considered capitalized.  This
                 currently affects only the application of the g option.
+                Defaults to 0.
 
     d[<div>]    If <div> is 0, each block becomes an IP.  If <div> is 1,
                 each block is subdivided into IPs as follows:  Let <p> be
                 the comprelen of the block.  Let a line's status be 1 if its
-                (<p> + 1)st character is a space, 0 otherwise.  Every line
+                (<p>+1)st character is a space, 0 otherwise.  Every line
                 in the block whose status is the same as the status of the
                 first line will begin a new paragraph.  Defaults to 0.
 
-    f[<fit>]    If <fit> is 1 and <just> is 0, par will try to make the
-                lines in the OP as nearly the same length as possible, even
-                if it means making the OP narrower.  Defaults to 0.  (See
-                also the j option.)
+    e[<expel>]  If <expel> is 1, superfluous lines withheld from the output.
+                Defaults to 0.
+
+    f[<fit>]    If <fit> is 1 and <just> is 0, par tries to make the lines
+                in the OP as nearly the same length as possible, even if it
+                means making the OP narrower.  Defaults to 0.  (See also the
+                j option.)
 
     g[<guess>]  If <guess> is 1, then when par is choosing line breaks,
                 whenever it encounters a curious word followed by a
@@ -477,32 +581,36 @@ Options
                 they are separated by two spaces, or by a line break, in the
                 output.  Defaults to 0.
 
+    i[<invis>]  If <invis> is 1, then vacant lines inserted because <quote>
+                is 1 are invisible; that is, they are not output.  If
+                <quote> is 0, <invis> has no effect.  Defaults to 0.  (See
+                also the q option.)
+
     j[<just>]   If <just> is 1, par justifies the OP, inserting spaces
                 between words so that all lines in the OP have length
-                <width> (except the last, if <last> is 0).  <fit> has no
-                effect if <just> is 1.  Defaults to 0.  (See also the w, l,
-                and f options.)
+                <width> (except the last, if <last> is 0).  Defaults to 0.
+                (See also the w, l, and f options.)
 
     l[<last>]   If <last> is 1, par tries to make the last line of the OP
                 about the same length as the others.  Defaults to 0.
 
     q[<quote>]  If <quote> is 1, then before each segment is scanned for
-                vacant lines, par will supply vacant lines between different
+                bodiless lines, par supplies vacant lines between different
                 quotation nesting levels as follows:  For each pair of
-                adjacent lines in the segment, if the quoteprefix of one
-                is a prefix of (but not the same as) the quoteprefix of
-                the other, and the line containing the shorter quoteprefix
-                contains a non-quote character, then one of two changes
-                will be made:  If the other line also contains a non-quote
-                character, then a line consisting of the smaller quoteprefix
-                will be inserted between the two lines; otherwise, the
-                longer quoteprefix will be truncated to match the shorter
-                one. <quote> also affects the default value of <prefix>.
-                Defaults to 0.  (See also the p option.)
+                adjacent lines in the segment (scanned from the top down)
+                which have different quoteprefixes, one of two actions is
+                taken.  If <invis> is 0, and either line consists entirely
+                of quote characters and spaces (or is empty), that line is
+                truncated to the longest common prefix of the two lines
+                (both are truncated if both qualify).  Otherwise, a line
+                consisting of the longest common prefix of the two lines is
+                inserted between them.  <quote> also affects the default
+                value of <prefix>.  Defaults to 0.  (See also the p and i
+                options.)
 
-    R[<Report>] If <Report> is 1, it will be considered an error for an
-                input word to contain more than <L> = (<width> - <prefix> -
-                <suffix>) characters.  Otherwise, such words will be chopped
+    R[<Report>] If <Report> is 1, it is considered an error for an input
+                word to contain more than <L> = (<width> - <prefix> -
+                <suffix>) characters.  Otherwise, such words are chopped
                 after each <L>th character into shorter words.  Defaults
                 to 0.  It is recommended that this option be included in
                 PARINIT (see the Environment section).
@@ -527,8 +635,7 @@ Environment
     PARBODY     Determines the initial set of body characters (which are
                 used for determining comprelens and comsuflens), using
                 charset syntax.  If PARBODY is not set, the set of body
-                characters is initially empty.  A good value for PARBODY
-                might be "_A_a.", but it depends on the application.
+                characters is initially empty.
 
     PARINIT     If set, par will read command line arguments from PARINIT
                 before it reads them from the command line.  Within
@@ -562,8 +669,15 @@ Details
     and every white character (except newlines) turned into a space.
 
     Blank lines in the input are transformed into empty lines in the output.
-    Vacant lines in the input are stripped of trailing spaces before being
-    output.
+
+    If <repeat> is 0, all bodiless lines are vacant, and they are all simply
+    stripped of trailing spaces before being output.  If <repeat> is 1, only
+    vacant lines whose suffixes have length 0 are treated that way; other
+    bodiless lines have the number of instances of their repeat characters
+    increased or decreased until the length of the line is <width>.
+
+    If <expel> is 1, superfluous lines are not output.  If <quote> and
+    <invis> are both 1, there may be invisible lines; they are not output.
 
     The input is divided into segments, which are divided into blocks,
     which are divided into IPs.  The exact process depends on the values of
@@ -648,8 +762,9 @@ Details
     bring its length up to <L>.
 
     To each line is prepended <prefix> characters.  Let <n> be the number of
-    lines in the IP.  The characters which are prepended to the <i>th line
-    are chosen as follows:
+    lines in the IP, let <fp> be the fallback prelen of the IP, and let <fs>
+    be the fallback suflen of the IP.  The characters which are prepended to
+    the <i>th line are chosen as follows:
 
      1) If <i> <= <n>, the characters are copied from the ones that were
         removed from the beginning of the <n>th input line.
@@ -657,7 +772,9 @@ Details
      2) If <i> > <n> > <hang>, the characters are copied from the ones that
         were removed from the beginning of the last input line.
 
-     3) If <i> > <n> and <n> <= <hang>, the characters are all spaces.
+     3) If <i> > <n> and <n> <= <hang>, the first min(<fp>,<prefix>) of
+        the characters are copied from the ones that were removed from the
+        beginning of the last input line, and the rest are all spaces.
 
     Then to each line is appended <suffix> characters.  The characters which
     are appended to the <i>th line are chosen as follows:
@@ -665,10 +782,12 @@ Details
      1) If <i> <= <n>, the characters are copied from the ones that were
         removed from the end of the nth input line.
 
-     2) If <i> > <n> > 0, the characters are copied from the ones that were
-        removed from the end of the last input line.
+     2) If <i> > <n> > <hang>, the characters are copied from the ones that
+        were removed from the end of the last input line.
 
-     3) If <n> = 0, the characters are all spaces.
+     3) If <i> > <n> and <n> <= <hang>, the first min(<fs>,<suffix>) of
+        the characters are copied from the ones that were removed from the
+        beginning of the last input line, and the rest are all spaces.
 
     Finally, the lines are printed to the output as the OP.
 
@@ -746,7 +865,8 @@ Examples
     editor, such as the ! commands of vi.
 
     The rest of this section is a series of before-and-after pictures
-    showing some typical uses of par.
+    showing some typical uses of par.  In all cases, no environment
+    variables are set.
 
     Before:
 
@@ -952,51 +1072,138 @@ Examples
 
     Before:
 
-        1. We the people of the United States.
-        2. In order to form a more perfect union.
-        3. Establish justice, ensure domestic tranquility.
-        4. Provide for the common defense
-        5. Promote the general welfare.
-        6. And secure the blessing of liberty
-           to ourselves and our posterity.
-        7. Do ordain and establish the Constitution.
-        8. Of the United States of America.
+        # 1. We the people of the United States.
+        # 2. In order to form a more perfect union.
+        # 3. Establish justice, ensure domestic
+        #    tranquility.
+        # 4. Provide for the common defense
+        # 5. Promote the general welfare.
+        # 6. And secure the blessing of liberty
+        #    to ourselves and our posterity.
+        # 7. Do ordain and establish the Constitution.
+        # 8. Of the United States of America.
 
-    After "par 35p11dh":
+    After "par 37p13dh":
 
-        1. We the people of the
-           United States.
-        2. In order to form a more
-           perfect union.
-        3. Establish justice,
-           ensure domestic
-           tranquility.
-        4. Provide for the common
-           defense
-        5. Promote the general
-           welfare.
-        6. And secure the blessing
-           of liberty to ourselves
-           and our posterity.
-        7. Do ordain and establish
-           the Constitution.
-        8. Of the United States of
-           America.
+        # 1. We the people of the
+        #    United States.
+        # 2. In order to form a more
+        #    perfect union.
+        # 3. Establish justice,
+        #    ensure domestic
+        #    tranquility.
+        # 4. Provide for the common
+        #    defense
+        # 5. Promote the general
+        #    welfare.
+        # 6. And secure the blessing
+        #    of liberty to ourselves
+        #    and our posterity.
+        # 7. Do ordain and establish
+        #    the Constitution.
+        # 8. Of the United States of
+        #    America.
+
+    Before:
+
+        /*****************************************/
+        /*   We the people of the United States, */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic    */
+        /* tranquility,                          */
+        /*                                       */
+        /*                                       */
+        /*   [ provide for the common defense, ] */
+        /*   [ promote the general welfare,    ] */
+        /*   [ and secure the blessing of liberty ] */
+        /*   [ to ourselves and our posterity, ] */
+        /*   [                                 ] */
+        /*                                       */
+        /* do ordain and establish the Constitution */
+        /* of the United States of America.       */
+        /******************************************/
+
+    After "par 42r":
+
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*   [                        ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
+
+    Or after "par 42re":
+
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
 
     Before:
 
         Joe Public writes:
         > Jane Doe writes:
         > >
+        > >
         > > I can't find the source for uncompress.
         > Oh no, not again!!!
         >
+        >
         > Isn't there a FAQ for this?
+        >
         >
         That wasn't very helpful, Joe. Jane,
         just make a link from uncompress to compress.
 
     After "par 40q":
+
+        Joe Public writes:
+
+        > Jane Doe writes:
+        >
+        >
+        > > I can't find the source for
+        > > uncompress.
+        >
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+
+    Or after "par 40qe":
 
         Joe Public writes:
 
@@ -1009,6 +1216,37 @@ Examples
         >
         > Isn't there a FAQ for this?
 
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+
+    Or after "par 40qi":
+
+        Joe Public writes:
+        > Jane Doe writes:
+        > >
+        > >
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+        >
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+
+    Or after "par 40qie":
+
+        Joe Public writes:
+        > Jane Doe writes:
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
         That wasn't very helpful, Joe.
         Jane, just make a link from
         uncompress to compress.
@@ -1090,7 +1328,12 @@ Limitations
     line (when quoting e-mail or commenting out a section of a shell script,
     for example), making them a pain to edit.  In my opinion, the world
     would be a nicer place if everyone stopped using tabs (so I'm doing my
-    part by not supporting them in par).  (Thanks to ets1@cs.wustl.edu (Eric
+    part by not supporting them in par).  If you find yourself editing a
+    file containing tabs, the first thing you should do is run the whole
+    file through expand, a standard UNIX command (if there is such a thing)
+    that replaces tabs with spaces while preserving the appearance of the
+    file.  If you're not in a UNIX environment, then hopefully someone
+    has ported expand to your system.  (Thanks to ets1@cs.wustl.edu (Eric
     T. Stuebe) for showing me the light about tabs.)
 
     There is currently no way for the length of the output prefix to differ

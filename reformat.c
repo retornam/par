@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -25,6 +25,8 @@
 #endif
 
 
+typedef unsigned char wflag_t;
+
 typedef struct word {
   const char *chrs;       /* Pointer to the characters in the word */
                           /* (NOT terminated by '\0').             */
@@ -34,23 +36,21 @@ typedef struct word {
               *nextline;  /*   Pointer to first word in next line. */
   int score,              /*   Value of the objective function.    */
       length;             /* Length of this word.                  */
-  short flags;            /* Notable properties of this word.      */
+  wflag_t flags;          /* Notable properties of this word.      */
 } word;
 
 /* The following may be bitwise-OR'd together */
 /* to set the flags field of a word:          */
 
-const short W_SHIFTED = 1,  /* This word should have an extra space before */
-                            /* it unless it's the first word in the line.  */
-            W_CURIOUS = 2,  /* This is a curious word (see par.doc).       */
-            W_CAPITAL = 4;  /* This is a capitalized word (see par.doc).   */
+static const wflag_t
+  W_SHIFTED = 1,  /* This word should have an extra space before */
+                  /* it unless it's the first word in the line.  */
+  W_CURIOUS = 2,  /* This is a curious word (see par.doc).       */
+  W_CAPITAL = 4;  /* This is a capitalized word (see par.doc).   */
 
-#define isshifted(w) ((w)->flags & 1)
-#define iscurious(w) (((w)->flags & 2) >> 1)
-#define iscapital(w) (((w)->flags & 4) >> 2)
-
-const char * const impossibility =
-  "Impossibility #%d has occurred.  Please report it.\n";
+#define isshifted(w) ( (w)->flags & 1)
+#define iscurious(w) (((w)->flags & 2) != 0)
+#define iscapital(w) (((w)->flags & 4) != 0)
 
 
 static int checkcapital(word *w)
@@ -126,9 +126,9 @@ static int simplebreaks(word *head, word *tail, int L, int last)
 }
 
 
-static void normalbreaks(word *head, word *tail, int L,
-                         int fit, int last, errmsg_t errmsg)
-
+static void normalbreaks(
+  word *head, word *tail, int L, int fit, int last, errmsg_t errmsg
+)
 /* Chooses line breaks in a list of words according to the policy   */
 /* in "par.doc" for <just> = 0 (L is <L>, fit is <fit>, and last is */
 /* <last>).  head must point to a dummy word, and tail must point   */
@@ -199,9 +199,9 @@ static void normalbreaks(word *head, word *tail, int L,
 }
 
 
-static void justbreaks(word *head, word *tail,
-                       int L, int last, errmsg_t errmsg)
-
+static void justbreaks(
+  word *head, word *tail, int L, int last, errmsg_t errmsg
+)
 /* Chooses line breaks in a list of words according to the  */
 /* policy in "par.doc" for <just> = 1 (L is <L> and last is */
 /* <last>).  head must point to a dummy word, and tail must */
@@ -286,9 +286,9 @@ static void justbreaks(word *head, word *tail,
 
 
 char **reformat(
-  const char * const *inlines, const char * const *endline,
-  int hang, int prefix, int suffix, int width, int cap, int fit,
-  int guess, int just, int last, int Report, int touch, errmsg_t errmsg
+  const char * const *inlines, const char * const *endline, int fp, int fs,
+  int hang, int prefix, int suffix, int width, int cap, int fit, int guess,
+  int just, int last, int Report, int touch, errmsg_t errmsg
 )
 {
   int numin, affix, L, onfirstword = 1, linelen, numout, numgaps, extra, phase;
@@ -304,15 +304,17 @@ char **reformat(
   dummy.flags = 0;
   head = tail = &dummy;
   numin = endline - inlines;
+  if (numin <= 0) {
+    sprintf(errmsg,impossibility,4);
+    goto rfcleanup;
+  }
 
 /* Allocate space for pointers to the suffixes: */
 
-  if (numin) {
-    suffixes = malloc(numin * sizeof (const char *));
-    if (!suffixes) {
-      strcpy(errmsg,outofmem);
-      goto rfcleanup;
-    }
+  suffixes = malloc(numin * sizeof (const char *));
+  if (!suffixes) {
+    strcpy(errmsg,outofmem);
+    goto rfcleanup;
   }
 
 /* Set the pointers to the suffixes, and create the words: */
@@ -320,7 +322,8 @@ char **reformat(
   affix = prefix + suffix;
   L = width - prefix - suffix;
 
-  for (line = inlines, suf = suffixes;  line < endline;  ++line, ++suf) {
+  line = inlines, suf = suffixes;
+  do {
     for (end = *line;  *end;  ++end);
     if (end - *line < affix) {
       sprintf(errmsg,
@@ -353,7 +356,8 @@ char **reformat(
       w1->flags = 0;
       p1 = p2;
     }
-  }
+    ++line, ++suf;
+  } while (line < endline);
 
 /* If guess is 1, set flag values and merge words: */
 
@@ -465,8 +469,13 @@ char **reformat(
     ++numout;
     q2 = q1 + prefix;
     if      (numout <= numin) memcpy(q1, inlines[numout - 1], prefix);
-    else if (numin > hang)    memcpy(q1, inlines[numin - 1], prefix);
-    else                      while (q1 < q2) *q1++ = ' ';
+    else if (numin  >  hang ) memcpy(q1, endline[-1],         prefix);
+    else {
+      if (fp > prefix) fp = prefix;
+      memcpy(q1, endline[-1], fp);
+      q1 += fp;
+      while (q1 < q2) *q1++ = ' ';
+    }
     q1 = q2;
     if (w1) {
       phase = numgaps / 2;
@@ -490,8 +499,13 @@ char **reformat(
     while (q1 < q2) *q1++ = ' ';
     q2 = q1 + suffix;
     if      (numout <= numin) memcpy(q1, suffixes[numout - 1], suffix);
-    else if (numin)           memcpy(q1, suffixes[numin - 1], suffix);
-    else                      while(q1 < q2) *q1++ = ' ';
+    else if (numin  >  hang ) memcpy(q1, suffixes[numin  - 1], suffix);
+    else {
+      if (fs > suffix) fs = suffix;
+      memcpy(q1, suffixes[numin - 1], fs);
+      q1 += fs;
+      while(q1 < q2) *q1++ = ' ';
+    }
     *q2 = '\0';
     if (w1) w1 = w1->nextline;
   }

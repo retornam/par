@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.h          */
-/* for Par 1.32      */
+/* for Par 1.40      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -54,11 +54,12 @@ int numitems(buffer *buf);
 
 void *copyitems(buffer *buf, errmsg_t errmsg);
 
-  /* copyitems(buf,errmsg) returns an array of objects of the proper size */
-  /* for *buf, one for each item in *buf, or (void *) 0 if there are no   */
-  /* items in buf.  The elements of the array are copied from the items   */
-  /* in *buf, in order.  The array is allocated with malloc(), so it may  */
-  /* be freed with free().  Returns NULL on failure.                      */
+  /* copyitems(buf,errmsg) returns an array of objects of */
+  /* the proper size for *buf, one for each item in *buf, */
+  /* or NULL if there are no items in buf.  The elements  */
+  /* of the array are copied from the items in *buf, in   */
+  /* order.  The array is allocated with malloc(), so it  */
+  /* may be freed with free().  Returns NULL on failure.  */
 
 
 void *nextitem(buffer *buf);
