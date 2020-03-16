@@ -1,9 +1,7 @@
-# *********************
-# * protoMakefile     *
-# * for Par 1.52      *
-# * Copyright 2001 by *
-# * Adam M. Costello  *
-# *********************
+# protoMakefile
+# last touched in Par 1.53.0
+# last meaningful change in Par 1.53.0
+# Copyright 1993, 1996, 2020 Adam M. Costello
 
 
 #####
@@ -47,7 +45,9 @@
 # Example (for Solaris 2.x with SPARCompiler C):
 # CC = cc -c -O -s -Xc -DDONTFREE
 
-CC = cc -c
+CPPFLAGS =
+CFLAGS =
+CC = cc $(CPPFLAGS) $(CFLAGS) -c
 
 # Define LINK1 and LINK2 so that the command
 #
@@ -106,7 +106,10 @@ errmsg$O: errmsg.c errmsg.h
 
 par$O: par.c charset.h errmsg.h buffer.h reformat.h
 
-reformat$O: reformat.c reformat.h errmsg.h buffer.h
+reformat$O: reformat.c reformat.h buffer.h charset.h errmsg.h
+
+test: par$E
+	./test-par ./par$E
 
 clean:
-	$(RM) par $(OBJS) $(JUNK)
+	$(RM) par$E $(OBJS) $(JUNK)

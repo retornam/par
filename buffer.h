@@ -1,15 +1,15 @@
-/*********************/
-/* buffer.h          */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+buffer.h
+last touched in Par 1.53.0
+last meaningful change in Par 1.31
+Copyright 1993 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
 
+Note: Those functions declared here which do not use errmsg
+always succeed, provided that they are passed valid arguments.
 
-/* Note: Those functions declared here which do not use errmsg    */
-/* always succeed, provided that they are passed valid arguments. */
+*/
 
 
 #include "errmsg.h"

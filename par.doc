@@ -1,16 +1,15 @@
-  *********************
-  * par.doc           *
-  * for Par 1.52      *
-  * Copyright 2001 by *
-  * Adam M. Costello  *
-  *********************
+par.doc
+last touched in Par 1.53.0
+last meaningful change in Par 1.53.0
+Copyright 1993, 1996, 2000, 2001, 2020 Adam M. Costello
 
 
-    Par 1.52 is a package containing:
+    Par 1.53.0 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
        + The ANSI C source for the filter "par".
+       + Associated scripts and text.
 
 
 Contents
@@ -35,27 +34,28 @@ Contents
 
 File List
 
-    The Par 1.52 package is always distributed with at least the
-    following files:
+    Par 1.53.0 consists of the following files:
 
-        buffer.c
-        buffer.h
-        charset.c
-        charset.h
-        errmsg.c
-        errmsg.h
-        par.1
-        par.c
-        par.doc
-        protoMakefile
-        reformat.c
-        reformat.h
-        releasenotes
+        buffer.c       1.53.0
+        buffer.h       1.53.0
+        charset.c      1.53.0
+        charset.h      1.53.0
+        errmsg.c       1.53.0
+        errmsg.h       1.53.0
+        par.1          1.53.0
+        par.c          1.53.0
+        par.doc        1.53.0
+        protoMakefile  1.53.0
+        reformat.c     1.53.0
+        reformat.h     1.53.0
+        releasenotes   1.53.0
+        test-par       1.53.0
 
-    Each file is a text file which identifies itself on the second line,
-    and identifies the version of Par to which it belongs on the third
-    line, so you can always tell which file is which, even if the files
-    have been renamed.
+    The version number for each file is defined to be the last version
+    of Par that touched it.  Each file is a text file which identifies
+    itself on the first or second line, and identifies the version of
+    Par that last touched it on the next line, so you can always tell
+    which file is which, even if the files have been renamed.
 
     The file "par.1" is a man page for the filter par (not to be
     confused with the package Par, which contains the source code for
@@ -66,23 +66,47 @@ File List
 
 Rights and Responsibilities
 
-    The files listed in the Files List section above are each Copyright
-    2001 by Adam M. Costello (henceforth "I", "me").
+    The files listed in the Files List section above are Copyright
+    (various years, see the copyright notice in each file)
+    Adam M. Costello (henceforth "I", "me").
 
     I grant everyone ("you") permission to do whatever you like with
     these files, provided that if you modify them you take reasonable
     steps to avoid confusing or misleading people about who wrote the
-    modified files (both you and I) or what version they are.  All
-    official versions of Par will have version numbers consisting of
-    only digits and periods.
+    modified files (both you and I) or what version they are.  All my
+    versions of Par will have version numbers consisting of only digits
+    and periods, so you could distinguish your versions by including
+    some other kind of character.
 
-    I encourage you to send me copies of your modifications in case I
-    wish to incorporate them into future versions of Par.  See the Bugs
-    section for my address.
+    I encourage you to send me your suggestions for improvements.  See
+    the Bugs section for my address.
 
     Though I have tried to make sure that Par is free of bugs, I make no
     guarantees about its soundness.  Therefore, I am not responsible for
     any damage resulting from the use of these files.
+
+    You may alternatively use these files under the MIT License:
+
+        Permission is hereby granted, free of charge, to any person
+        obtaining a copy of this software and associated documentation
+        files (the "Software"), to deal in the Software without
+        restriction, including without limitation the rights to use,
+        copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom
+        the Software is furnished to do so, subject to the following
+        conditions:
+
+        The above copyright notice and this permission notice shall be
+        included in all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+        KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+        WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+        AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+        WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+        OTHER DEALINGS IN THE SOFTWARE.
 
 
 Compilation
@@ -103,10 +127,11 @@ Compilation
 
 Synopsis
     par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>]
-        [h[<hang>]] [p[<prefix>]] [r[<repeat>]] [s[<suffix>]] [T[<Tab>]]
-        [w[<width>]] [b[<body>]] [c[<cap>]] [d[<div>]] [E[<Err>]]
-        [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]] [j[<just>]]
-        [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]
+        [W<op><set>] [Z<op><set>] [h[<hang>]] [p[<prefix>]]
+        [r[<repeat>]] [s[<suffix>]] [T[<Tab>]] [w[<width>]] [b[<body>]]
+        [c[<cap>]] [d[<div>]] [E[<Err>]] [e[<expel>]] [f[<fit>]]
+        [g[<guess>]] [i[<invis>]] [j[<just>]] [l[<last>]] [q[<quote>]]
+        [R[<Report>]] [t[<touch>]]
 
     Things enclosed in [square brackets] are optional.  Things enclosed
     in <angle brackets> are parameters.
@@ -141,11 +166,11 @@ Quick Start
     immediately and understand it later, assign to the PARINIT
     environment variable the following value:
 
-        rTbgqR B=.,?_A_a Q=_s>|
+        rTbgqR B=.,?'_A_a_@ Q=_s>|
 
-    The spaces, question mark, greater-than sign, and vertical bar will
-    probably have to be escaped or quoted to prevent your shell from
-    interpreting them.
+    The spaces, question mark, apostrophe, greater-than sign, and
+    vertical bar will probably have to be escaped or quoted to prevent
+    your shell from interpreting them.
 
     The documentation, though precise, is unfortunately not well-written
     for the end-user.  Your best bet is probably to read quickly the
@@ -171,17 +196,27 @@ Terminology
 
                    __ = an underscore
                    _s = a space
+                   _S = all space characters
                    _b = a backslash (\)
                    _q = a single quote (')
                    _Q = a double quote (")
                    _A = all upper case letters
                    _a = all lower case letters
+                   _@ = all neither-case letters
                    _0 = all decimal digits
                  _xhh = the character represented by the two hexadecimal
                         digits hh (which may be upper or lower case)
 
             The NUL character must not appear in the string but it may
             be included in the set with the _x00 sequence.
+
+            The exact meanings of _S, _A, _a, _@, and _0 are
+            locale-dependent.  (Actually, all locales are supposed to
+            agree on _0, but not on the others.)  In the default "C"
+            locale: _S includes only space, formfeed, newline, carriage
+            return, tab, and vertical tab; _A includes only A through Z;
+            _a includes only a through z; _@ includes nothing; and _0
+            includes only 0 through 9.
 
         error
             A condition which causes par to abort.  See the Diagnostics
@@ -201,7 +236,8 @@ Terminology
     Types of characters:
 
         alphanumeric character
-            An upper case letter, lower case letter, or decimal digit.
+            An alphabetic character or decimal digit, _A_a_@_0 in
+            charset syntax (see above).
 
         body character
             A member of the set of characters defined by the PARBODY
@@ -217,10 +253,15 @@ Terminology
             environment variable and/or the Q option.
 
         terminal character
-            A period, question mark, exclamation point, or colon.
+            A member of the set of characters defined by the Z option.
+            Initially, before any Z options have been processed, the
+            set contains period, question mark, exclamation point, and
+            colon.
 
         white character
-            A space, formfeed, newline, carriage return, tab, or
+            A member of the set of characters defined by the W option.
+            Initially, before any W options have been processed, the set
+            contains space, formfeed, newline, carriage return, tab, and
             vertical tab.
 
     Functions:
@@ -233,7 +274,7 @@ Terminology
             the divider just after the last non-space non-body character
             in <c> (at the beginning if there is none), then advance
             the divider over any immediately following spaces.  The
-            comprelen of <S> is the number of characters preceeding the
+            comprelen of <S> is the number of characters preceding the
             divider.
 
         comsuflen
@@ -246,7 +287,7 @@ Terminology
             none), then advance the divider over all but the last of any
             immediately following spaces.  If <body> is 1, place the
             divider just before the first non-space non-body character,
-            then back up the divider over one immediately preceeding
+            then back up the divider over one immediately preceding
             space if there is one.  The comsuflen of <S> is the number
             of characters following the divider.
 
@@ -293,14 +334,15 @@ Terminology
             bodiless lines and/or the beginning/end of the segment.
             Let <p> and <s> be the comprelen and comsuflen of <S>.
             Any member of <S> which, if stripped of its first <p> and
-            last <s> characters, would be blank (or, if the parameter
-            <repeat> is non-zero, would consist of the same character
-            repeated at least <repeat> times), is order <k> bodiless.
-            The first <p> characters of the bodiless line comprise its
-            prefix; the last <s> characters comprise its suffix.  The
-            character which repeats in the middle is called its repeat
-            character.  If the middle is empty, the space is taken to be
-            its repeat character.
+            last <s> characters, would be blank (or, if the line was not
+            inserted by the <quote> feature and the parameter <repeat>
+            is non-zero, would consist of the same character repeated
+            at least <repeat> times), is order <k> bodiless.  The first
+            <p> characters of the bodiless line comprise its prefix;
+            the last <s> characters comprise its suffix.  The character
+            which repeats in the middle is called its repeat character.
+            If the middle is empty, the space is taken to be its repeat
+            character.
 
         vacant line
             A bodiless line whose repeat character is the space.
@@ -358,8 +400,8 @@ Options
                 briefly describing the options used by par.
 
     version     Causes all remaining arguments to be ignored.  No input
-                is read. "par 1.52" is printed on the output.  Of
-                course, this will change in future releases of Par.
+                is read.  "par " followed by its version number is
+                printed on the output.
 
     B<op><set>  <op> is a single character, either an equal sign (=),
                 a plus sign (+), or a minus sign (-), and <set> is a
@@ -378,6 +420,13 @@ Options
 
     Q<op><set>  Just like the B option, except that it applies to the
                 set of quote characters.
+
+    W<op><set>  Just like the B option, except that it applies to the
+                set of white characters.
+
+    Z<op><set>  Just like the B option, except that it applies to the
+                set of terminal characters.
+
 
     All remaining options are used to set values of parameters.  Values
     set by command line options hold for all paragraphs.  Unset
@@ -541,10 +590,10 @@ Environment
                 charset syntax.  If PARBODY is not set, the set of body
                 characters is initially empty.
 
-    PARINIT     If set, par will read command line arguments from PARINIT
-                before it reads them from the command line.  Within
-                the value of PARINIT, arguments are separated by white
-                characters.
+    PARINIT     If set, par will read command line arguments from
+                PARINIT before it reads them from the command line.
+                Within the value of PARINIT, arguments are separated by
+                the initial set of white characters.
 
     PARPROTECT  Determines the set of protective characters, using charset
                 syntax.  If PARPROTECT is not set, the set of protective
@@ -575,7 +624,7 @@ Details
     All other input lines, as they are read, have any NUL characters
     removed, and every white character (except newlines) turned into a
     space.  Actually, each tab character is turned into <Tab> - (<n> %
-    <Tab>) spaces, where <n> is the number of characters preceeding the
+    <Tab>) spaces, where <n> is the number of characters preceding the
     tab character on the line (evaluated after earlier tab characters
     have been expanded).
 
@@ -609,7 +658,7 @@ Details
     lines.  The text is broken into words, which are separated by
     spaces.  That is, a word is a maximal sub-sequence of non-spaces.
     If <guess> is 1, some words might be merged (see g in the Options
-    section).  The first word includes any spaces that preceed it on the
+    section).  The first word includes any spaces that precede it on the
     same line.
 
     Let <L> = <width> - <prefix> - <suffix>.
@@ -717,7 +766,7 @@ Diagnostics
 
     If there is an error, an error message will be printed to the
     output, and par will return EXIT_FAILURE.  If the error is local
-    to a single paragraph, the preceeding paragraphs will have been
+    to a single paragraph, the preceding paragraphs will have been
     output before the error was detected.  Line numbers in error
     messages are local to the IP in which the error occurred.  All
     error messages begin with "par error:" on a line by itself.  Error
@@ -765,18 +814,18 @@ Examples
 
     After "par 39":
 
-        We the people of the United    
-        States, in order to form a     
-        more perfect union, establish  
-        justice, insure domestic       
-        tranquility, provide for the   
-        common defense, promote the    
-        general welfare, and secure    
-        the blessing of liberty to     
-        ourselves and our posterity,   
-        do ordain and establish the    
-        Constitution of the United     
-        States of America.             
+        We the people of the United
+        States, in order to form a
+        more perfect union, establish
+        justice, insure domestic
+        tranquility, provide for the
+        common defense, promote the
+        general welfare, and secure
+        the blessing of liberty to
+        ourselves and our posterity,
+        do ordain and establish the
+        Constitution of the United
+        States of America.
 
     The line breaks chosen by par are clearly more eye-pleasing.
 
@@ -1308,9 +1357,8 @@ Apologies
     complex, and very unclean.  It is nowhere near the optimal design
     for the larger task it now tries to address.  Its only redeeming
     features are that it is extremely useful (I find it indispensable),
-    extremely portable, and very stable (between the release of version
-    1.41 on 1993-Oct-31 and the release of version 1.52 on 2001-Apr-29,
-    no incorrect behavior was reported).
+    extremely portable, and very stable since version 1.41 released on
+    1993-Oct-31.
 
     Back in 1993 I had very little experience at writing documentation
     for users, so the documentation for Par became rather nightmarish.
@@ -1330,9 +1378,9 @@ Bugs
     there may be bugs that I haven't yet discovered.
 
     If you find any bugs (in the program or in the documentation), or if
-    you have any suggestions, please send e-mail to:
+    you have any suggestions, please contact me:
 
-        amc@cs.berkeley.edu
+        http://www.nicemice.net/amc/
 
     When reporting a bug, please include the exact input and command
     line options used, and the version number of par, so that I can
@@ -1340,6 +1388,7 @@ Bugs
 
     The latest release of Par is available on the Web at:
 
-        http://www.cs.berkeley.edu/~amc/Par/
+        http://www.nicemice.net/par/
 
-    These addresses will change.  I'll try to leave forward pointers.
+    I don't expect these URLs to change in the forseeable future, but if
+    they do, I'll try to leave forward pointers.

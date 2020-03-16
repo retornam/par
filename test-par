@@ -1,0 +1,734 @@
+:
+# test-par
+# last touched in Par 1.53.0
+# last meaningful change in Par 1.53.0
+# Copyright 2020 Adam M. Costello
+
+# This is POSIX shell code.
+
+if [ $# -ne 1 ]; then
+  echo 'need exactly one argument, the pathname for par' >&2
+  exit 2
+fi
+
+par=$1
+unset PARBODY PARINIT PARPROTECT PARQUOTE
+pass_count=0
+fail_count=0
+
+
+# The caller must set variables called 'input' and 'expected', may set
+# a variable called 'locale' (which if nonempty will be exposed to
+# par as environment variable LC_ALL), and may pass arguments for par
+# on the command line.  The input and expected text need not end with
+# newlines, because test_par will add a newline to the input, and the
+# shell backquotes that capture the output will strip the last newline.
+test_par() {
+  output=`
+    if [ -n "$locale" ]; then
+      LC_ALL=$locale "$par" "$@"
+    else
+      "$par" "$@"
+    fi << EOF
+$input
+EOF
+`
+  cmdline="${locale:+LC_ALL=$locale }$par $@"
+  if [ "$expected" = "$output" ]; then
+    pass_count=`expr $pass_count + 1`
+    echo "passed: $cmdline"
+  else
+    fail_count=`expr $fail_count + 1`
+    echo "
+FAILED: $cmdline
+input {
+$input
+}
+expected {
+$expected
+}
+output {
+$output
+}
+"
+  fi
+}
+
+
+# From the Examples section of par.doc:
+
+input=`cat << 'EOF'
+        We the people of the United States,
+        in order to form a more perfect union,
+        establish justice,
+        insure domestic tranquility,
+        provide for the common defense,
+        promote the general welfare,
+        and secure the blessing of liberty
+        to ourselves and our posterity,
+        do ordain and establish the Constitution
+        of the United States of America.
+EOF
+`
+args=39
+expected=`cat << 'EOF'
+        We the people of the United
+        States, in order to form a
+        more perfect union, establish
+        justice, insure domestic
+        tranquility, provide for the
+        common defense, promote the
+        general welfare, and secure
+        the blessing of liberty to
+        ourselves and our posterity,
+        do ordain and establish the
+        Constitution of the United
+        States of America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        /*   We the people of the United States, */
+        /* in order to form a more perfect union, */
+        /* establish justice, */
+        /* insure domestic tranquility, */
+        /* provide for the common defense, */
+        /* promote the general welfare, */
+        /* and secure the blessing of liberty */
+        /* to ourselves and our posterity, */
+        /* do ordain and establish the Constitution */
+        /* of the United States of America. */
+EOF
+`
+args=59
+expected=`cat << 'EOF'
+        /*   We the people of the United States, in      */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility, provide */
+        /* for the common defense, promote the general   */
+        /* welfare, and secure the blessing of liberty   */
+        /* to ourselves and our posterity, do ordain     */
+        /* and establish the Constitution of the United  */
+        /* States of America.                            */
+EOF
+`
+test_par $args
+
+args=59f
+expected=`cat << 'EOF'
+        /*   We the people of the United States,  */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic     */
+        /* tranquility, provide for the common    */
+        /* defense, promote the general welfare,  */
+        /* and secure the blessing of liberty to  */
+        /* ourselves and our posterity, do ordain */
+        /* and establish the Constitution of the  */
+        /* United States of America.              */
+EOF
+`
+test_par $args
+
+args=59l
+expected=`cat << 'EOF'
+        /*   We the people of the United States, in      */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility,         */
+        /* provide for the common defense, promote       */
+        /* the general welfare, and secure the           */
+        /* blessing of liberty to ourselves and our      */
+        /* posterity, do ordain and establish the        */
+        /* Constitution of the United States of America. */
+EOF
+`
+test_par $args
+
+args=59lf
+expected=`cat << 'EOF'
+        /*   We the people of the United States,  */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic     */
+        /* tranquility, provide for the common    */
+        /* defense, promote the general welfare,  */
+        /* and secure the blessing of liberty     */
+        /* to ourselves and our posterity, do     */
+        /* ordain and establish the Constitution  */
+        /* of the United States of America.       */
+EOF
+`
+test_par $args
+
+args=59lft0
+expected=`cat << 'EOF'
+        /*   We the people of the United States,         */
+        /* in order to form a more perfect union,        */
+        /* establish justice, insure domestic            */
+        /* tranquility, provide for the common           */
+        /* defense, promote the general welfare,         */
+        /* and secure the blessing of liberty            */
+        /* to ourselves and our posterity, do            */
+        /* ordain and establish the Constitution         */
+        /* of the United States of America.              */
+EOF
+`
+test_par $args
+
+args=59j
+expected=`cat << 'EOF'
+        /*   We  the people  of  the  United States,  in */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility, provide */
+        /* for the  common defense, promote  the general */
+        /* welfare, and  secure the blessing  of liberty */
+        /* to ourselves and our posterity, do ordain and */
+        /* establish  the  Constitution  of  the  United */
+        /* States of America.                            */
+EOF
+`
+test_par $args
+
+args=59jl
+expected=`cat << 'EOF'
+        /*   We  the   people  of  the   United  States, */
+        /* in   order    to   form   a    more   perfect */
+        /* union,  establish  justice,  insure  domestic */
+        /* tranquility, provide for  the common defense, */
+        /* promote  the  general   welfare,  and  secure */
+        /* the  blessing  of  liberty to  ourselves  and */
+        /* our  posterity, do  ordain and  establish the */
+        /* Constitution of the United States of America. */
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        Preamble      We the people of the United States,
+        to the US     in order to form
+        Constitution  a more perfect union,
+                      establish justice,
+                      insure domestic tranquility,
+                      provide for the common defense,
+                      promote the general welfare,
+                      and secure the blessing of liberty
+                      to ourselves and our posterity,
+                      do ordain and establish
+                      the Constitution
+                      of the United States of America.
+EOF
+`
+args=52h3
+expected=`cat << 'EOF'
+        Preamble      We the people of the United
+        to the US     States, in order to form a
+        Constitution  more perfect union, establish
+                      justice, insure domestic
+                      tranquility, provide for the
+                      common defense, promote the
+                      general welfare, and secure
+                      the blessing of liberty to
+                      ourselves and our posterity,
+                      do ordain and establish the
+                      Constitution of the United
+                      States of America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+         1  We the people of the United States,
+         2  in order to form a more perfect union,
+         3  establish justice,
+         4  insure domestic tranquility,
+         5  provide for the common defense,
+         6  promote the general welfare,
+         7  and secure the blessing of liberty
+         8  to ourselves and our posterity,
+         9  do ordain and establish the Constitution
+        10  of the United States of America.
+EOF
+`
+args=59p12l
+expected=`cat << 'EOF'
+         1  We the people of the United States, in order to
+         2  form a more perfect union, establish justice,
+         3  insure domestic tranquility, provide for the
+         4  common defense, promote the general welfare,
+         5  and secure the blessing of liberty to ourselves
+         6  and our posterity, do ordain and establish the
+         7  Constitution of the United States of America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        > > We the people
+        > > of the United States,
+        > > in order to form a more perfect union,
+        > > establish justice,
+        > > ensure domestic tranquility,
+        > > provide for the common defense,
+        >
+        > Promote the general welfare,
+        > and secure the blessing of liberty
+        > to ourselves and our posterity,
+        > do ordain and establish
+        > the Constitution of the United States of America.
+EOF
+`
+args=52
+expected=`cat << 'EOF'
+        > > We the people of the United States, in
+        > > order to form a more perfect union,
+        > > establish justice, ensure domestic
+        > > tranquility, provide for the common
+        > > defense,
+        >
+        > Promote the general welfare, and secure
+        > the blessing of liberty to ourselves and
+        > our posterity, do ordain and establish
+        > the Constitution of the United States of
+        > America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        >   We the people
+        > of the United States,
+        > in order to form a more perfect union,
+        > establish justice,
+        > ensure domestic tranquility,
+        > provide for the common defense,
+        >   Promote the general welfare,
+        > and secure the blessing of liberty
+        > to ourselves and our posterity,
+        > do ordain and establish
+        > the Constitution of the United States of America.
+EOF
+`
+args=52d
+expected=`cat << 'EOF'
+        >   We the people of the United States,
+        > in order to form a more perfect union,
+        > establish justice, ensure domestic
+        > tranquility, provide for the common
+        > defense,
+        >   Promote the general welfare, and secure
+        > the blessing of liberty to ourselves and
+        > our posterity, do ordain and establish
+        > the Constitution of the United States of
+        > America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        # 1. We the people of the United States.
+        # 2. In order to form a more perfect union.
+        # 3. Establish justice, ensure domestic
+        #    tranquility.
+        # 4. Provide for the common defense
+        # 5. Promote the general welfare.
+        # 6. And secure the blessing of liberty
+        #    to ourselves and our posterity.
+        # 7. Do ordain and establish the Constitution.
+        # 8. Of the United States of America.
+EOF
+`
+args=37p13dh
+expected=`cat << 'EOF'
+        # 1. We the people of the
+        #    United States.
+        # 2. In order to form a more
+        #    perfect union.
+        # 3. Establish justice,
+        #    ensure domestic
+        #    tranquility.
+        # 4. Provide for the common
+        #    defense
+        # 5. Promote the general
+        #    welfare.
+        # 6. And secure the blessing
+        #    of liberty to ourselves
+        #    and our posterity.
+        # 7. Do ordain and establish
+        #    the Constitution.
+        # 8. Of the United States of
+        #    America.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        /*****************************************/
+        /*   We the people of the United States, */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic    */
+        /* tranquility,                          */
+        /*                                       */
+        /*                                       */
+        /*   [ provide for the common defense, ] */
+        /*   [ promote the general welfare,    ] */
+        /*   [ and secure the blessing of liberty ] */
+        /*   [ to ourselves and our posterity, ] */
+        /*   [                                 ] */
+        /*                                       */
+        /* do ordain and establish the Constitution */
+        /* of the United States of America.       */
+        /******************************************/
+EOF
+`
+args=42r
+expected=`cat << 'EOF'
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*   [                        ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
+EOF
+`
+test_par $args
+
+args=42re
+expected=`cat << 'EOF'
+        /********************************/
+        /*   We the people of the       */
+        /* United States, in order to   */
+        /* form a more perfect union,   */
+        /* establish justice, insure    */
+        /* domestic tranquility,        */
+        /*                              */
+        /*   [ provide for the common ] */
+        /*   [ defense, promote the   ] */
+        /*   [ general welfare, and   ] */
+        /*   [ secure the blessing of ] */
+        /*   [ liberty to ourselves   ] */
+        /*   [ and our posterity,     ] */
+        /*                              */
+        /* do ordain and establish the  */
+        /* Constitution of the United   */
+        /* States of America.           */
+        /********************************/
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        Joe Public writes:
+        > Jane Doe writes:
+        > >
+        > >
+        > > I can't find the source for uncompress.
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+        >
+        That wasn't very helpful, Joe. Jane,
+        just make a link from uncompress to compress.
+EOF
+`
+args=40q
+expected=`cat << 'EOF'
+        Joe Public writes:
+
+        > Jane Doe writes:
+        >
+        >
+        > > I can't find the source for
+        > > uncompress.
+        >
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+EOF
+`
+test_par $args
+
+args=40qe
+expected=`cat << 'EOF'
+        Joe Public writes:
+
+        > Jane Doe writes:
+        >
+        > > I can't find the source for
+        > > uncompress.
+        >
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
+
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+EOF
+`
+test_par $args
+
+args=40qi
+expected=`cat << 'EOF'
+        Joe Public writes:
+        > Jane Doe writes:
+        > >
+        > >
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        >
+        > Isn't there a FAQ for this?
+        >
+        >
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+EOF
+`
+test_par $args
+
+args=40qie
+expected=`cat << 'EOF'
+        Joe Public writes:
+        > Jane Doe writes:
+        > > I can't find the source for
+        > > uncompress.
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        I sure hope there's still room
+        in Dr. Jones' section of archaeology.
+        I've heard he's the bestest.  [sic]
+EOF
+`
+args=50g
+expected=`cat << 'EOF'
+        I sure hope there's still room in
+        Dr. Jones' section of archaeology.  I've
+        heard he's the bestest. [sic]
+EOF
+`
+test_par $args
+
+args=50gc
+expected=`cat << 'EOF'
+        I sure hope there's still room in
+        Dr. Jones' section of archaeology.  I've
+        heard he's the bestest.  [sic]
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        John writes:
+        : Mary writes:
+        : + Anastasia writes:
+        : + > Hi all!
+        : + Hi Ana!
+        : Hi Ana & Mary!
+        Please unsubscribe me from alt.hello.
+EOF
+`
+args='Q+:+ q'
+expected=`cat << 'EOF'
+        John writes:
+
+        : Mary writes:
+        :
+        : + Anastasia writes:
+        : +
+        : + > Hi all!
+        : +
+        : + Hi Ana!
+        :
+        : Hi Ana & Mary!
+
+        Please unsubscribe me from alt.hello.
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+        amc> The b option was added primarily to deal with
+        amc> this new style of quotation
+        amc> which became popular after Par 1.41 was released.
+        amc>
+        amc> Par still pays attention to body characters.
+        amc> Par should not mistake "Par" for part of the prefix.
+        amc> Par should not mistake "." for a suffix.
+EOF
+`
+args='B=._A_a 50bg'
+expected=`cat << 'EOF'
+        amc> The b option was added primarily to
+        amc> deal with this new style of quotation
+        amc> which became popular after Par 1.41
+        amc> was released.
+        amc>
+        amc> Par still pays attention to body
+        amc> characters.  Par should not mistake
+        amc> "Par" for part of the prefix.  Par
+        amc> should not mistake "." for a suffix.
+EOF
+`
+test_par $args
+
+
+# Tests for new features in 1.53.0:
+
+tmpdir=/tmp/test-par-$$
+export LOCPATH=$tmpdir/locale
+mkdir -p $LOCPATH/en_US
+mkdir $LOCPATH/he_IL
+localedef -f ISO-8859-1 -i en_US $LOCPATH/en_US
+localedef -f ISO-8859-8 -i he_IL $LOCPATH/he_IL
+
+# ISO-8859-1 capital letters A and AE, small letters A and AE
+input=`printf 'A\306a\346'`
+#
+args=
+locale=C
+expected=$input
+test_par $args
+locale=en_US
+expected=$input
+test_par $args
+#
+args=W=_A
+locale=C
+expected=`printf ' \306a\346'`
+test_par $args
+locale=en_US
+expected=`printf '  a\346'`
+test_par $args
+#
+args=W=_a
+locale=C
+expected=`printf 'A\306 \346'`
+test_par $args
+locale=en_US
+expected=`printf 'A\306'`
+test_par $args
+
+# ISO-8859-1 no-break spaces and vertical tabs
+input=`printf 'X\240\240\240Y\v\v\vZ'`
+#
+args=
+locale=C
+expected=`printf 'X\240\240\240Y Z'`
+test_par $args
+locale=en_US
+test_par $args
+#
+args=W=_S
+locale=C
+expected=`printf 'X\240\240\240Y Z'`
+test_par $args
+#
+args=W=
+locale=en_US
+expected=$input
+test_par $args
+#
+# The behavior of isspace() on non-ASCII characters (like no-break
+# space) in locales other than C is not standardized, and has been
+# observed to vary, so we won't test that.  If you want to refer to
+# no-break space, the surest way is with _x.
+args=W+_xA0
+locale=en_US
+expected='X Y Z'
+test_par $args
+
+# ISO-8859-8 letter alef
+input=`printf '.\n\340'`
+#
+args=P=_A_a
+locale=he_IL
+expected=`printf '. \340'`
+test_par $args
+#
+args=P=_@
+expected=`printf '.\n\340'`
+test_par $args
+
+unset LOCPATH locale
+
+input=`cat << 'EOF'
+> one
+>> two
+>>> three
+>>>> four
+>>>>> five
+EOF
+`
+args='Q=> qr'
+expected=`cat << 'EOF'
+> one
+>
+>> two
+>>
+>>> three
+>>>
+>>>> four
+>>>>
+>>>>> five
+EOF
+`
+test_par $args
+
+input=`cat << 'EOF'
+One.
+Two:
+Three.
+EOF
+`
+args=g
+expected=`cat << 'EOF'
+One.  Two:  Three.
+EOF
+`
+test_par $args
+#
+args='g Z-:'
+expected=`cat << 'EOF'
+One.  Two: Three.
+EOF
+`
+test_par $args
+
+
+rm -rf $tmpdir
+echo
+echo "$pass_count passed"
+echo "$fail_count failed"
+[ 0 = $fail_count ]

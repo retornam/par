@@ -1,13 +1,11 @@
-.\"*********************
-.\"* par.1             *
-.\"* for Par 1.52      *
-.\"* Copyright 2001 by *
-.\"* Adam M. Costello  *
-.\"*********************
+.\" par.1
+.\" last touched in Par 1.53.0
+.\" last meaningful change in Par 1.53.0
+.\" Copyright 1993, 1996, 2000, 2020 Adam M. Costello
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "2001-Apr-29" "Par 1.52" "USER COMMANDS"
+.TH par 1 "2020-Mar-14" "Par 1.53.0" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -24,6 +22,8 @@ par \- filter for reformatting paragraphs
 .OP B opset
 .OP P opset
 .OP Q opset
+.OP W opset
+.OP Z opset
 .OP h \*Ohang\*C
 .OP p \*Oprefix\*C
 .OP r \*Orepeat\*C
@@ -90,10 +90,10 @@ it immediately and understand it later, assign the
 .B \s-1PARINIT\s0
 environment variable the following value:
 .IP
-rTbgqR B=.,?_A_a Q=_s>|
+rTbgqR B=.,?'_A_a_@ Q=_s>|
 .LP
-The spaces, question mark, greater-than sign, and
-vertical bar will probably have to be escaped or
+The spaces, question mark, apostrophe, greater-than sign,
+and vertical bar will probably have to be escaped or
 quoted to prevent your shell from interpreting them.
 .LP
 The documentation, though precise, is unfortunately
@@ -134,11 +134,13 @@ must begin one of the following escape sequences:
 .RS 1.5i
 .IT __\ = an underscore
 .IT _s\ = a space
+.IT _S\ = all space characters
 .IT _b\ = a backslash (\e)
 .IT _q\ = a single quote (')
 .IT _Q\ = a double quote (")
 .IT _A\ = all upper case letters
 .IT _a\ = all lower case letters
+.IT _@\ = all neither-case letters
 .IT _0\ = all decimal digits
 .IT _x\fIhh\fP\ = the character represented
 by the two hexadecimal digits
@@ -148,6 +150,16 @@ by the two hexadecimal digits
 .IP
 The NUL character must not appear in the string, but
 it may be included in the set with the _x00 sequence.
+.IP
+The exact meanings of _S, _A, _a, _@, and _0 are locale-dependent.
+(Actually, all locales are supposed to agree on _0, but not on the others.)
+In the default \*QC\*U locale:
+_S includes only space, formfeed, newline,
+carriage return, tab, and vertical tab;
+_A includes only A through Z;
+_a includes only a through z;
+_@ includes nothing;
+and _0 includes only 0 through 9.
 .IP error
 A condition which causes
 .B par
@@ -169,7 +181,8 @@ using command line options.
 Types of characters:
 .RS
 .IP "alphanumeric character"
-An upper case letter, lower case letter, or decimal digit.
+An alphabetic character or decimal digit,
+_A_a_@_0 in charset syntax (see above).
 .IP "body character"
 A member of the set of characters defined by the
 .B \s-1PARBODY\s0
@@ -193,10 +206,19 @@ environment variable and/or the
 .B Q
 option.
 .IP "terminal character"
-A period, question mark, exclamation point, or colon.
+A member of the set of characters defined by the
+.B Z
+option.  Initially, before any
+.B Z
+options have been processed, the set contains
+period, question mark, exclamation point, and colon.
 .IP "white character"
-A space, formfeed, newline, carriage
-return, tab, or vertical tab.
+A member of the set of characters defined by the
+.B W
+option.  Initially, before any
+.B W
+options have been processed, the set contains space,
+formfeed, newline, carriage return, tab, and vertical tab.
 .RE
 .LP
 Functions:
@@ -220,7 +242,7 @@ last non-space non-body character in
 advance the divider over any immediately
 following spaces.  The comprelen of
 .I S
-is the number of characters preceeding the divider.
+is the number of characters preceding the divider.
 .IP comsuflen
 Given a non-empty sequence
 .I S
@@ -249,7 +271,7 @@ of any immediately following spaces.  If
 .I body
 is 1, place the divider just before the first
 non-space non-body character, then back up
-the divider over one immediately preceeding
+the divider over one immediately preceding
 space if there is one.  The comsuflen of
 .I S
 is the number of characters following the divider.
@@ -315,7 +337,9 @@ which, if stripped of its first
 .I p
 and last
 .I s
-characters, would be blank (or, if the parameter
+characters, would be blank (or, if the line was not inserted by the
+.I quote
+feature  and the parameter
 .I repeat
 is non-zero, would consist of the
 same character repeated at least
@@ -404,8 +428,8 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.52\*U is printed on the output.  Of
-course, this will change in future releases of Par.
+is read.  \*Qpar \*U followed by its version number
+is printed on the output.
 .TP
 .BI B opset
 .I op
@@ -439,6 +463,18 @@ Just like the
 .B B
 option, except that it applies
 to the set of quote characters.
+.TP
+.BI W opset
+Just like the
+.B B
+option, except that it applies
+to the set of white characters.
+.TP
+.BI Z opset
+Just like the
+.B B
+option, except that it applies
+to the set of terminal characters.
 .LP
 All remaining options are used to set values of
 parameters.  Values set by command line options hold for all
@@ -799,7 +835,7 @@ will read command line options from
 before it reads them from the command line.
 Within the value of
 .B \s-1PARINIT\s0,
-arguments are separated by white characters.
+arguments are separated by the initial set of white characters.
 .TP
 .B \s-1PARPROTECT\s0
 Determines the set of protective
@@ -853,7 +889,7 @@ Actually, each tab character is turned into
 .IR Tab )
 spaces, where
 .I n
-is the number of characters preceeding the
+is the number of characters preceding the
 tab character on the line (evaluated after
 earlier tab characters have been expanded).
 .LP
@@ -917,7 +953,7 @@ is 1, some words might be merged (see
 in the
 .SM OPTIONS
 section).  The first word includes any
-spaces that preceed it on the same line.
+spaces that precede it on the same line.
 .LP
 Let
 .I L
@@ -1135,7 +1171,7 @@ will be printed to the output, and
 .B par
 will return
 .BR \s-1EXIT_FAILURE\s0 .
-If the error is local to a single paragraph, the preceeding
+If the error is local to a single paragraph, the preceding
 paragraphs will have been output before the error
 was detected.  Line numbers in error messages are
 local to the IP in which the error occurred.  All
@@ -1840,9 +1876,8 @@ guesses, at the cost of becoming extremely complex, and very
 unclean.  It is nowhere near the optimal design for the larger
 task it now tries to address.  Its only redeeming features
 are that it is extremely useful (I find it indispensable),
-extremely portable, and very stable (between the release
-of version 1.41 on 1993-Oct-31 and the release of version
-1.52 on 2001-Apr-29, no incorrect behavior was reported).
+extremely portable, and very stable since version 1.41 released
+on 1993-Oct-31.
 .LP
 Back in 1993 I had very little experience at writing
 documentation for users, so the documentation for Par
@@ -1861,10 +1896,10 @@ course, there may be bugs that I haven't yet discovered.
 .LP
 If you find any bugs (in the program or
 in the documentation), or if you have
-any suggestions, please send e-mail to:
+any suggestions, please contact me:
 .RS
 .LP
-amc@cs.berkeley.edu
+http://www.nicemice.net/amc/
 .RE
 .LP
 When reporting a bug, please include the exact input and
@@ -1875,7 +1910,8 @@ so that I can reproduce it.
 The latest release of Par is available on the Web at:
 .RS
 .LP
-http://www.cs.berkeley.edu/~amc/Par/
+http://www.nicemice.net/par/
 .RE
 .LP
-These addresses will change.  I'll try to leave forward pointers.
+I don't expect these URLs to change in the forseeable
+future, but if they do, I'll try to leave forward pointers.

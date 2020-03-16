@@ -1,12 +1,83 @@
-  *********************
-  * releasenotes      *
-  * for Par 1.52      *
-  * Copyright 2001 by *
-  * Adam M. Costello  *
-  *********************
+releasenotes
+last touched in Par 1.53.0
+last meaningful change in Par 1.53.0
+Copyright 1993, 1996, 2000, 2001, 2020 Adam M. Costello
 
 
 Each entry below describes changes since the previous version.
+
+Par 1.53.0 released 2020-Mar-14
+    Fixed the following bugs:
+        An unintended bad interaction between <quote> and <repeat>.
+            The specification was inconsistent.  Although it said that
+            the lines inserted by the <quote> feature were vacant,
+            the <repeat> feature could interpret the quote character
+            of inserted lines as a repeat character, in which case
+            the lines were not vacant (according to the definition),
+            and more quote/repeat characters would be inserted to
+            extend the line to the full width, which no one would ever
+            want.  The definition of "bodiless line" is revised so that
+            lines inserted by the <quote> feature are excluded from
+            consideration by the <repeat> feature.
+        A printf format string mismatch (ptrdiff_t vs. %d), reported by
+            Quentin Barnes (qbarnes at gmail.com).
+        protoMakefile's clean target removed par rather than par$E,
+            reported by George V. Reilly (george at reilly.org).
+    Added the following features:
+        Locale support for single-byte character sets.
+            The previous verson, 1.52, attempted to do this in one line
+            of code (setlocale()), but it's not that simple.  Versions
+            before 1.52 gave no thought to character sets other than
+            US-ASCII and did not handle them entirely correctly.
+            Calling setlocale() in version 1.52 corrected some flaws but
+            not all, and created one new flaw.  This version and the
+            previous two all have the same character handling in the
+            "C" locale and when processing US-ASCII text; differences
+            arise only when processing non-US-ASCII text in another
+            locale.  In versions before 1.52 the implementation assumed
+            that "uppercase letter" means only the 26 characters A-Z
+            and that "lowercase letter" means only the 26 characters
+            a-z, and the specification assumed that every letter is
+            either upper case or lower case.  These assumptions hold
+            for US-ASCII, but not for most other character sets;
+            therefore versions before 1.52 did not really support
+            non-US-ASCII text.  Version 1.52, by calling setlocale(),
+            relaxed the three assumptions in the implementation but
+            not the assumption in the specification, and inadvertantly
+            caused the implementation to deviate from the specification
+            by converting all space characters to spaces rather than
+            converting only the specified white characters, which is not
+            necessarily what you want (for example, you probably don't
+            want no-break space converted to space, but some locales
+            on some platforms have been known to classify no-break
+            space as white-space, like FreeBSD did in 2004).  This
+            version fixes the specification by introducing the concept
+            of "neither-case letter" and redefining "alphanumeric
+            character" to include it, and fixes the implementation to
+            convert only the white characters to spaces.  It also makes
+            the white characters configurable so that the version 1.52
+            space-conversion behavior can be restored if desired (W=_S).
+            Note that Par still assumes constant display width per byte,
+            which is not true for UTF-8 nor ISO-2022-*, but is true for
+            most single-byte charsets and for EUC-* text without the
+            single-shift-in/out codes.
+        The W option, for configuring the set of white characters.
+        The Z option, for configuring the set of terminal characters.
+        The _@ escape sequence (neither-case letter) in charset syntax.
+        The _S escape sequence (any space) in charset syntax.
+    Added _@ and apostrophe to the set of body characters in PARINIT.
+    Add #includes for whatever interfaces are used rather than depending
+        on included files to #include other files.
+    In protoMakefile introduced CPPFLAGS and CFLAGS (default empty) into
+        the default definition of CC.
+    Added a test-par script and a test target in protoMakefile.
+    Fixed a misspelling (preceed => precede) in par.doc and par.1.
+    Changed the top-of-file comment convention so that every release
+        won't need to touch every file (this is the last time).
+    Updated the author contact information.
+    Clarified the license and added the MIT License as an alternative.
+    Adopted a modern version number format, with minor and patch numbers
+        as dot-separated integers rather than adjacent single digits.
 
 Par 1.52 released 2001-Apr-29
     Fixed a portability problem regarding unsigned char versus char.

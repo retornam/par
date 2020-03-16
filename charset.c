@@ -1,24 +1,30 @@
-/*********************/
-/* charset.c         */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+charset.c
+last touched in Par 1.53.0
+last meaningful change in Par 1.53.0
+Copyright 1993, 2001, 2020 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
+
+Because this is ANSI C code, we can't assume that char has only 8 bits.
+Therefore, we can't use bit vectors to represent sets without the risk
+of consuming large amounts of memory.  Therefore, this code is much more
+complicated than might be expected.
+
+The issues regarding char and unsigned char are relevant to the
+use of the ctype.h functions, and the interpretation of the _xhh
+sequence.  See the comments near the beginning of par.c.
+
+*/
 
 
-/* Because this is ANSI C code, we can't assume that there are only 256 */
-/* characters.  Therefore, we can't use bit vectors to represent sets   */
-/* without the risk of consuming large amounts of memory.  Therefore,   */
-/* this code is much more complicated than might be expected.           */
+#include "charset.h"  /* Makes sure we're consistent with the prototypes. */
 
-
-#include "charset.h"  /* Makes sure we're consistent with the.  */
-                      /* prototypes.  Also includes "errmsg.h". */
-#include "buffer.h"   /* Also includes <stddef.h>.              */
+#include "buffer.h"
+#include "errmsg.h"
 
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,11 +35,6 @@
 #ifdef DONTFREE
 #define free(ptr)
 #endif
-
-
-/* The issues regarding char and unsigned char are relevant to the  */
-/* use of the ctype.h functions, and the interpretation of the _xhh */
-/* sequence.  See the comments near the beginning of par.c.         */
 
 
 typedef unsigned char csflag_t;
@@ -50,10 +51,13 @@ struct charset {
 /* The following may be bitwise-OR'd together */
 /* to set the flags field of a charset:       */
 
-static const csflag_t CS_UCASE = 1,  /* Includes all upper case letters. */
-                      CS_LCASE = 2,  /* Includes all lower case letters. */
-                      CS_DIGIT = 4,  /* Includes all decimal digits.     */
-                      CS_NUL   = 8;  /* Includes the NUL character.      */
+static const csflag_t
+  CS_UCASE = 1,   /* Includes all upper case letters.   */
+  CS_LCASE = 2,   /* Includes all lower case letters.   */
+  CS_NCASE = 4,   /* Includes all neither case letters. */
+  CS_DIGIT = 8,   /* Includes all decimal digits.       */
+  CS_SPACE = 16,  /* Includes all space characters.     */
+  CS_NUL   = 32;  /* Includes the NUL character.        */
 
 
 static int appearsin(char c, const char *str)
@@ -132,7 +136,9 @@ charset *parsecharset(const char *str, errmsg_t errmsg)
       else {
         if      (*p == 'A') cset->flags |= CS_UCASE;
         else if (*p == 'a') cset->flags |= CS_LCASE;
+        else if (*p == '@') cset->flags |= CS_NCASE;
         else if (*p == '0') cset->flags |= CS_DIGIT;
+        else if (*p == 'S') cset->flags |= CS_SPACE;
         else goto pcsbadstr;
       }
     }
@@ -173,13 +179,28 @@ void freecharset(charset *cset)
 
 int csmember(char c, const charset *cset)
 {
-  return
-    appearsin(c, cset->inlist) ||
-    ( !appearsin(c, cset->outlist) &&
-      ( (cset->flags & CS_LCASE && islower(*(unsigned char *)&c)) ||
-        (cset->flags & CS_UCASE && isupper(*(unsigned char *)&c)) ||
-        (cset->flags & CS_DIGIT && isdigit(*(unsigned char *)&c)) ||
-        (cset->flags & CS_NUL   && !c                           )   ) );
+  unsigned char uc;
+
+  if (appearsin(c, cset->inlist )) return 1;
+  if (appearsin(c, cset->outlist)) return 0;
+  uc = *(unsigned char *)&c;
+
+  /* The logic for the CS_?CASE flags is a little convoluted,  */
+  /* but avoids calling islower() or isupper() more than once. */
+
+  if (cset->flags & CS_NCASE) {
+    if ( isalpha(uc) &&
+         (cset->flags & CS_LCASE || !islower(uc)) &&
+         (cset->flags & CS_UCASE || !isupper(uc))    ) return 1;
+  }
+  else {
+    if ( (cset->flags & CS_LCASE && islower(uc)) ||
+         (cset->flags & CS_UCASE && isupper(uc))    ) return 1;
+  }
+
+  return (cset->flags & CS_DIGIT && isdigit(uc)) ||
+         (cset->flags & CS_SPACE && isspace(uc)) ||
+         (cset->flags & CS_NUL   && !c         )    ;
 }
 
 

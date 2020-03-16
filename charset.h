@@ -1,16 +1,19 @@
-/*********************/
-/* charset.h         */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+charset.h
+last touched in Par 1.53.0
+last meaningful change in Par 1.31
+Copyright 1993 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
+
+Note: Those functions declared here which do not use errmsg
+always succeed, provided that they are passed valid arguments.
+
+*/
 
 
-/* Note: Those functions declared here which do not use errmsg    */
-/* always succeed, provided that they are passed valid arguments. */
-
+#ifndef CHARSET_H
+#define CHARSET_H
 
 #include "errmsg.h"
 
@@ -67,3 +70,6 @@ charset *cscopy(const charset *cset, errmsg_t errmsg);
 void csswap(charset *cset1, charset *cset2);
 
   /* csswap(cset1,cset2) swaps the contents of *cset1 and *cset2. */
+
+
+#endif

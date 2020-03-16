@@ -1,11 +1,12 @@
-/*********************/
-/* errmsg.h          */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+errmsg.h
+last touched in Par 1.53.0
+last meaningful change in Par 1.40
+Copyright 1993 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
+
+*/
 
 
 #ifndef ERRMSG_H

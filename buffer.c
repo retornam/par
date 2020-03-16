@@ -1,21 +1,23 @@
-/*********************/
-/* buffer.c          */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+buffer.c
+last touched in Par 1.53.0
+last meaningful change in Par 1.50
+Copyright 1993, 1996 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
 
+additem(), copyitems(), and nextitem() rely on the fact that
+sizeof (char) is 1.  See section A7.4.8 of The C Programming
+Language, Second Edition, by Kerninghan and Ritchie.
 
-/* additem(), copyitems(), and nextitem() rely on the fact that */
-/* sizeof (char) is 1.  See section A7.4.8 of The C Programming */
-/* Language, Second Edition, by Kerninghan and Ritchie.         */
+*/
 
 
 #include "buffer.h"  /* Makes sure we're consistent with the prototypes. */
-                     /* Also includes <stddef.h> and "errmsg.h".         */
 
+#include "errmsg.h"
+
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 

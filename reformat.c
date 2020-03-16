@@ -1,18 +1,25 @@
-/*********************/
-/* reformat.c        */
-/* for Par 1.52      */
-/* Copyright 2001 by */
-/* Adam M. Costello  */
-/*********************/
+/*
+reformat.c
+last touched in Par 1.53.0
+last meaningful change in Par 1.53.0
+Copyright 1993, 2001, 2020 Adam M. Costello
 
-/* This is ANSI C code (C89). */
+This is ANSI C code (C89).
+
+The issues regarding char and unsigned char are relevant to the use of
+the ctype.h functions.  See the comments near the beginning of par.c.
+
+*/
 
 
-#include "reformat.h"  /* Makes sure we're consistent with the  */
-                       /* prototype.  Also includes "errmsg.h". */
-#include "buffer.h"    /* Also includes <stddef.h>.             */
+#include "reformat.h"  /* Makes sure we're consistent with the prototype. */
+
+#include "buffer.h"
+#include "charset.h"
+#include "errmsg.h"
 
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,11 +30,6 @@
 #ifdef DONTFREE
 #define free(ptr)
 #endif
-
-
-/* The issues regarding char and unsigned char are relevant to  */
-/* the use of the ctype.h functions.  See the comments near the */
-/* beginning of par.c.                                          */
 
 
 typedef unsigned char wflag_t;
@@ -71,7 +73,7 @@ static int checkcapital(word *w)
 }
 
 
-static int checkcurious(word *w)
+static int checkcurious(word *w, const charset *terminalchars)
 /* Returns 1 if *w is curious according to */
 /* the definition in par.doc, or 0 if not. */
 {
@@ -81,7 +83,7 @@ static int checkcurious(word *w)
   for (start = w->chrs, p = start + w->length;  p > start;  --p) {
     ch = p[-1];
     if (isalnum(*(unsigned char *)&ch)) return 0;
-    if (ch == '.' || ch == '?' || ch == '!' || ch == ':') break;
+    if (csmember(ch,terminalchars)) break;
   }
 
   if (p <= start + 1) return 0;
@@ -295,7 +297,8 @@ static void justbreaks(
 char **reformat(
   const char * const *inlines, const char * const *endline, int afp, int fs,
   int hang, int prefix, int suffix, int width, int cap, int fit, int guess,
-  int just, int last, int Report, int touch, errmsg_t errmsg
+  int just, int last, int Report, int touch, const charset *terminalchars,
+  errmsg_t errmsg
 )
 {
   int numin, affix, L, onfirstword = 1, linelen, numout, numgaps, extra, phase;
@@ -335,8 +338,8 @@ char **reformat(
     for (end = *line;  *end;  ++end);
     if (end - *line < affix) {
       sprintf(errmsg,
-              "Line %d shorter than <prefix> + <suffix> = %d + %d = %d\n",
-              line - inlines + 1, prefix, suffix, affix);
+              "Line %ld shorter than <prefix> + <suffix> = %d + %d = %d\n",
+              (long)(line - inlines + 1), prefix, suffix, affix);
       goto rfcleanup;
     }
     end -= suffix;
@@ -371,7 +374,7 @@ char **reformat(
 
   if (guess) {
     for (w1 = head, w2 = head->next;  w2;  w1 = w2, w2 = w2->next) {
-      if (checkcurious(w2)) w2->flags |= W_CURIOUS;
+      if (checkcurious(w2,terminalchars)) w2->flags |= W_CURIOUS;
       if (cap || checkcapital(w2)) {
         w2->flags |= W_CAPITAL;
         if (iscurious(w1)) {
