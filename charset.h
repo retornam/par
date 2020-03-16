@@ -1,11 +1,11 @@
 /*********************/
 /* charset.h         */
-/* for Par 1.51      */
-/* Copyright 2000 by */
+/* for Par 1.52      */
+/* Copyright 2001 by */
 /* Adam M. Costello  */
 /*********************/
 
-/* This is ANSI C code. */
+/* This is ANSI C code (C89). */
 
 
 /* Note: Those functions declared here which do not use errmsg    */

@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.51      *
-.\"* Copyright 2000 by *
+.\"* for Par 1.52      *
+.\"* Copyright 2001 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "2000-Feb-24" "Par 1.51" "USER COMMANDS"
+.TH par 1 "2001-Apr-29" "Par 1.52" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -404,7 +404,7 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.51\*U is printed on the output.  Of
+is read.  \*Qpar 1.52\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
@@ -1155,10 +1155,10 @@ doesn't bother doing any error checking on output functions.
 .nf
 .ps -1p
 .vs -2p
-.cs R 20
+.ft CW
 ..
 .de VE
-.cs R
+.ft P
 .vs
 .ps
 .fi
@@ -1837,12 +1837,12 @@ border on either side.  It was pretty clean back then.  Over
 the next three months, it very rapidly expanded to handle
 multiple paragraphs, offer more options, and take better
 guesses, at the cost of becoming extremely complex, and very
-unclean.  It is nowhere near the optimal design for the
-larger task it now tries to address.  Its only redeeming
-features are that it is extremely useful (I find it
-indispensable), extremely portable, and very stable (between
-the release of version 1.41 on 1993-Oct-31 and the release
-of version 1.51 on 2000-Feb-24, no bugs were reported).
+unclean.  It is nowhere near the optimal design for the larger
+task it now tries to address.  Its only redeeming features
+are that it is extremely useful (I find it indispensable),
+extremely portable, and very stable (between the release
+of version 1.41 on 1993-Oct-31 and the release of version
+1.52 on 2001-Apr-29, no incorrect behavior was reported).
 .LP
 Back in 1993 I had very little experience at writing
 documentation for users, so the documentation for Par
@@ -1878,5 +1878,4 @@ The latest release of Par is available on the Web at:
 http://www.cs.berkeley.edu/~amc/Par/
 .RE
 .LP
-Note that all of these addresses could change anytime after
-2001-May.  I'll try to leave forward pointers.
+These addresses will change.  I'll try to leave forward pointers.

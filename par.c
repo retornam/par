@@ -1,21 +1,22 @@
 /*********************/
 /* par.c             */
-/* for Par 1.51      */
-/* Copyright 2000 by */
+/* for Par 1.52      */
+/* Copyright 2001 by */
 /* Adam M. Costello  */
 /*********************/
 
-/* This is ANSI C code. */
+/* This is ANSI C code (C89). */
 
 
 #include "charset.h"   /* Also includes "errmsg.h". */
 #include "buffer.h"    /* Also includes <stddef.h>. */
 #include "reformat.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #undef NULL
 #define NULL ((void *) 0)
@@ -23,6 +24,55 @@
 #ifdef DONTFREE
 #define free(ptr)
 #endif
+
+
+/*===
+
+Regarding char and unsigned char:  ANSI C is a nightmare in this
+respect.  Some functions, like puts(), strchr(), and getenv(), use char
+or char*, so they work well with character constants like 'a', which
+are char, and with argv, which is char**.  But several other functions,
+like getchar(), putchar(), and isdigit(), use unsigned char (converted
+to/from int).  Therefore innocent-looking code can be wrong, for
+example:
+
+    int c = getchar();
+    if (c == 'a') ...
+
+This is wrong because 'a' is char (converted to int) and could be
+negative, but getchar() returns unsigned char (converted to int), so c
+is always nonnegative or EOF.  For similar reasons, it is wrong to pass
+a char to a function that expects an unsigned char:
+
+    putchar('\n');
+    if (isdigit(argv[1][0])) ...
+
+Inevitably, we need to convert between char and unsigned char.  This can
+be done by integral conversion (casting or assigning a char to unsigned
+char or vice versa), or by aliasing (converting a pointer to char to
+a pointer to unsigned char (or vice versa) and then dereferencing
+it).  ANSI C requires that integral conversion alters the bits when the
+unsigned value is not representable in the signed type and the signed
+type does not use two's complement representation.  Aliasing, on the
+other hand, preserves the bits.  Although the C standard is not at all
+clear about which sort of conversion is appropriate for making the
+standard library functions interoperate, I think preserving the bits
+is what is needed.  Under that assumption, here are some examples of
+correct code:
+
+    int c = getchar();
+    char ch;
+
+    if (c != EOF) {
+      *(unsigned char *)&ch = c;
+      if (ch == 'a') ...
+      if (isdigit(c)) ...
+    }
+
+    char *s = ...
+    if (isdigit(*(unsigned char *)s)) ...
+
+===*/
 
 
 static const char * const usagemsg =
@@ -182,14 +232,14 @@ static void parsearg(
     return;
   }
 
-  if (isdigit(*arg)) {
+  if (isdigit(*(unsigned char *)arg)) {
     if (!strtoudec(arg, &n)) goto badarg;
     if (n <= 8) *pprefix = n;
     else *pwidth = n;
   }
 
   for (;;) {
-    while (isdigit(*arg)) ++arg;
+    while (isdigit(*(unsigned char *)arg)) ++arg;
     oc = *arg;
     if (!oc) break;
     n = -1;
@@ -276,7 +326,8 @@ static char **readlines(
   for (empty = blank = firstline = 1;  ;  ) {
     c = getchar();
     if (c == EOF) break;
-    if (c == '\n') {
+    *(unsigned char *)&ch = c;
+    if (ch == '\n') {
       if (blank) {
         ungetc(c,stdin);
         break;
@@ -286,9 +337,7 @@ static char **readlines(
       ln = copyitems(cbuf,errmsg);
       if (*errmsg) goto rlcleanup;
       if (quote) {
-        for (qpend = ln;
-             *qpend && csmember(*qpend, quotechars);
-             ++qpend);
+        for (qpend = ln;  *qpend && csmember(*qpend, quotechars);  ++qpend);
         for (p = qpend;  *p == ' ' || csmember(*p, quotechars);  ++p);
         qsonly =  *p == '\0';
         while (qpend > ln && qpend[-1] == ' ') --qpend;
@@ -296,7 +345,7 @@ static char **readlines(
           for (p = ln, op = oldln;
                p < qpend && op < oldqpend && *p == *op;
                ++p, ++op);
-          if (!(p == qpend && op == oldqpend))
+          if (!(p == qpend && op == oldqpend)) {
             if (!invis && (oldqsonly || qsonly)) {
               if (oldqsonly) {
                 *op = '\0';
@@ -322,6 +371,7 @@ static char **readlines(
               if (*errmsg) goto rlcleanup;
               vln = NULL;
             }
+          }
         }
         oldln = ln;
         oldqpend = qpend;
@@ -338,14 +388,14 @@ static char **readlines(
     }
     else {
       if (empty) {
-        if (csmember((char) c, protectchars)) {
+        if (csmember(ch, protectchars)) {
           ungetc(c,stdin);
           break;
         }
         empty = 0;
       }
-      if (!c) continue;
-      if (c == '\t') {
+      if (!ch) continue;
+      if (ch == '\t') {
         ch = ' ';
         for (i = Tab - numitems(cbuf) % Tab;  i > 0;  --i) {
           additem(cbuf, &ch, errmsg);
@@ -353,9 +403,8 @@ static char **readlines(
         }
         continue;
       }
-      if (isspace(c)) c = ' ';
+      if (isspace(c)) ch = ' ';
       else blank = 0;
-      ch = c;
       additem(cbuf, &ch, errmsg);
       if (*errmsg) goto rlcleanup;
     }
@@ -425,11 +474,12 @@ static void compresuflen(
   }
   if (body)
     for (p1 = end;  p1 > knownstart;  )
-      if (*--p1 != ' ')
+      if (*--p1 != ' ') {
         if (csmember(*p1, bodychars))
           end = p1;
         else
           break;
+      }
   *ppre = end - start;
 
   knownstart = *lines + *ppre;
@@ -638,11 +688,15 @@ int main(int argc, const char * const *argv)
   int prefixbak, suffixbak, c, sawnonblank, oweblank, n, i, afp, fs;
   charset *bodychars = NULL, *protectchars = NULL, *quotechars = NULL;
   char *parinit = NULL, *arg, **inlines = NULL, **endline, **firstline, *end,
-       **nextline, **outlines = NULL, **line;
+       **nextline, **outlines = NULL, **line, ch;
   const char *env, * const whitechars = " \f\n\r\t\v";
   errmsg_t errmsg = { '\0' };
   lineprop *props = NULL, *firstprop, *nextprop;
   FILE *errout;
+
+/* Set the current locale from the environment: */
+
+  setlocale(LC_ALL,"");
 
 /* Process environment variables: */
 
@@ -715,22 +769,26 @@ int main(int argc, const char * const *argv)
   for (sawnonblank = oweblank = 0;  ;  ) {
     for (;;) {
       c = getchar();
-      if (expel && c == '\n') {
+      if (c == EOF) break;
+      *(unsigned char *)&ch = c;
+      if (expel && ch == '\n') {
         oweblank = sawnonblank;
         continue;
       }
-      if (csmember((char) c, protectchars)) {
+      if (csmember(ch, protectchars)) {
         sawnonblank = 1;
         if (oweblank) {
-          putchar('\n');
+          puts("");
           oweblank = 0;
         }
-        while (c != '\n' && c != EOF) {
+        while (ch != '\n') {
           putchar(c);
           c = getchar();
+          if (c == EOF) break;
+          *(unsigned char *)&ch = c;
         }
       }
-      if (c != '\n') break;
+      if (ch != '\n') break;  /* subsumes the case that c == EOF */
       putchar(c);
     }
     if (c == EOF) break;
@@ -749,7 +807,7 @@ int main(int argc, const char * const *argv)
 
     sawnonblank = 1;
     if (oweblank) {
-      putchar('\n');
+      puts("");
       oweblank = 0;
     }
 
@@ -766,7 +824,7 @@ int main(int argc, const char * const *argv)
       if (isbodiless(firstprop)) {
         if (!isinvis(firstprop) && !(expel && issuperf(firstprop))) {
           for (end = *firstline;  *end;  ++end);
-          if (!repeat  ||  firstprop->rc == ' ' && !firstprop->s) {
+          if (!repeat || (firstprop->rc == ' ' && !firstprop->s)) {
             while (end > *firstline && end[-1] == ' ') --end;
             *end = '\0';
             puts(*firstline);
@@ -779,7 +837,7 @@ int main(int argc, const char * const *argv)
             }
             printf("%.*s", firstprop->p, *firstline);
             for (i = n;  i;  --i)
-              putchar(firstprop->rc);
+              putchar(*(unsigned char *)&firstprop->rc);
             puts(end - firstprop->s);
           }
         }
@@ -837,7 +895,7 @@ parcleanup:
 
   errout = Err ? stderr : stdout;
   if (*errmsg) fprintf(errout, "par error:\n%.*s", errmsg_size, errmsg);
-  if (version) fputs("par 1.51\n",errout);
+  if (version) fputs("par 1.52\n",errout);
   if (help)    fputs(usagemsg,errout);
 
   return *errmsg ? EXIT_FAILURE : EXIT_SUCCESS;

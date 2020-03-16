@@ -1,11 +1,11 @@
 /*********************/
 /* charset.c         */
-/* for Par 1.51      */
-/* Copyright 2000 by */
+/* for Par 1.52      */
+/* Copyright 2001 by */
 /* Adam M. Costello  */
 /*********************/
 
-/* This is ANSI C code. */
+/* This is ANSI C code (C89). */
 
 
 /* Because this is ANSI C code, we can't assume that there are only 256 */
@@ -19,10 +19,9 @@
 #include "buffer.h"   /* Also includes <stddef.h>.              */
 
 #include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-
+#include <stdlib.h>
+#include <string.h>
 
 #undef NULL
 #define NULL ((void *) 0)
@@ -30,6 +29,11 @@
 #ifdef DONTFREE
 #define free(ptr)
 #endif
+
+
+/* The issues regarding char and unsigned char are relevant to the  */
+/* use of the ctype.h functions, and the interpretation of the _xhh */
+/* sequence.  See the comments near the beginning of par.c.         */
 
 
 typedef unsigned char csflag_t;
@@ -66,15 +70,20 @@ static int hexdigtoint(char c)
 /* Returns the value represented by the hexadecimal */
 /* digit c, or -1 if c is not a hexadecimal digit.  */
 {
-  const char *p, * const hexdigits = "0123456789ABCDEF";
+  const char *p, * const hexdigits = "0123456789ABCDEFabcdef";
+  int n;
 
   if (!c) return -1;
-  p = strchr(hexdigits, toupper(c));
-  return p ? p - hexdigits : -1;
+  p = strchr(hexdigits, *(unsigned char *)&c);
+  if (!p) return -1;
+  n = p - hexdigits;
+  if (n >= 16) n -= 6;
+  return n;
 
-  /* We can't do things like c - '0' or c - 'A' because we can't depend     */
-  /* on the order of the characters in ANSI C.  Nor can we do things like   */
-  /* hexdigtoint[c] because we don't know how large such an array might be. */
+  /* We can't do things like c - 'A' because we can't */
+  /* depend on the order of the characters in ANSI C. */
+  /* Nor can we do things like hexdigtoint[c] because */
+  /* we don't know how large such an array might be.  */
 }
 
 
@@ -110,7 +119,7 @@ charset *parsecharset(const char *str, errmsg_t errmsg)
           hex1 = hexdigtoint(p[1]);
           hex2 = hexdigtoint(p[2]);
           if (hex1 < 0  ||  hex2 < 0) goto pcsbadstr;
-          ch = 16 * hex1 + hex2;
+          *(unsigned char *)&ch = 16 * hex1 + hex2;
           p += 2;
         }
         if (!ch)
@@ -164,12 +173,13 @@ void freecharset(charset *cset)
 
 int csmember(char c, const charset *cset)
 {
-  return    appearsin(c, cset->inlist)
-         ||    !appearsin(c, cset->outlist)
-            && (    cset->flags & CS_LCASE && islower(c)
-                ||  cset->flags & CS_UCASE && isupper(c)
-                ||  cset->flags & CS_DIGIT && isdigit(c)
-                ||  cset->flags & CS_NUL   && !c         );
+  return
+    appearsin(c, cset->inlist) ||
+    ( !appearsin(c, cset->outlist) &&
+      ( (cset->flags & CS_LCASE && islower(*(unsigned char *)&c)) ||
+        (cset->flags & CS_UCASE && isupper(*(unsigned char *)&c)) ||
+        (cset->flags & CS_DIGIT && isdigit(*(unsigned char *)&c)) ||
+        (cset->flags & CS_NUL   && !c                           )   ) );
 }
 
 
@@ -202,7 +212,7 @@ static charset *csud(
   lists[3] = cset2->outlist;
 
   for (list = lists;  list < lists + 4;  ++list)
-    if (*list)
+    if (*list) {
       for (p = *list;  *p;  ++p)
         if (u  ?  csmember(*p, cset1) ||  csmember(*p, cset2)
                :  csmember(*p, cset1) && !csmember(*p, cset2)) {
@@ -216,6 +226,7 @@ static charset *csud(
             additem(outbuf,p,errmsg);
             if (*errmsg) goto csuderror;
           }
+    }
 
   additem(inbuf, &nullchar, errmsg);
   if (*errmsg) goto csuderror;

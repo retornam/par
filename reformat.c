@@ -1,20 +1,20 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.51      */
-/* Copyright 2000 by */
+/* for Par 1.52      */
+/* Copyright 2001 by */
 /* Adam M. Costello  */
 /*********************/
 
-/* This is ANSI C code. */
+/* This is ANSI C code (C89). */
 
 
 #include "reformat.h"  /* Makes sure we're consistent with the  */
                        /* prototype.  Also includes "errmsg.h". */
 #include "buffer.h"    /* Also includes <stddef.h>.             */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
 
 #undef NULL
@@ -23,6 +23,11 @@
 #ifdef DONTFREE
 #define free(ptr)
 #endif
+
+
+/* The issues regarding char and unsigned char are relevant to  */
+/* the use of the ctype.h functions.  See the comments near the */
+/* beginning of par.c.                                          */
 
 
 typedef unsigned char wflag_t;
@@ -59,8 +64,10 @@ static int checkcapital(word *w)
 {
   const char *p, *end;
 
-  for (p = w->chrs, end = p + w->length;  p < end && !isalnum(*p);  ++p);
-  return p < end && !islower(*p);
+  for (p = w->chrs, end = p + w->length;
+       p < end && !isalnum(*(unsigned char *)p);
+       ++p);
+  return p < end && !islower(*(unsigned char *)p);
 }
 
 
@@ -73,14 +80,14 @@ static int checkcurious(word *w)
 
   for (start = w->chrs, p = start + w->length;  p > start;  --p) {
     ch = p[-1];
-    if (isalnum(ch)) return 0;
+    if (isalnum(*(unsigned char *)&ch)) return 0;
     if (ch == '.' || ch == '?' || ch == '!' || ch == ':') break;
   }
 
   if (p <= start + 1) return 0;
 
   --p;
-  do if (isalnum(*--p)) return 1;
+  do if (isalnum(*(unsigned char *)--p)) return 1;
   while (p > start);
 
   return 0;
@@ -308,6 +315,7 @@ char **reformat(
     sprintf(errmsg,impossibility,4);
     goto rfcleanup;
   }
+  numgaps = extra = 0;  /* unnecessary, but quiets compiler warnings */
 
 /* Allocate space for pointers to the suffixes: */
 
@@ -366,7 +374,7 @@ char **reformat(
       if (checkcurious(w2)) w2->flags |= W_CURIOUS;
       if (cap || checkcapital(w2)) {
         w2->flags |= W_CAPITAL;
-        if (iscurious(w1))
+        if (iscurious(w1)) {
           if (w1->chrs[w1->length] && w1->chrs + w1->length + 1 == w2->chrs) {
             w2->length += w1->length + 1;
             w2->chrs = w1->chrs;
@@ -378,8 +386,8 @@ char **reformat(
             else w2->flags &= ~W_SHIFTED;
             free(w1);
           }
-          else
-            w2->flags |= W_SHIFTED;
+          else w2->flags |= W_SHIFTED;
+        }
       }
     }
     tail = w1;
@@ -456,7 +464,7 @@ char **reformat(
       for (w2 = w1->next, numgaps = 0, extra = L - w1->length;
            w2 != w1->nextline;
            ++numgaps, extra -= 1 + isshifted(w2) + w2->length, w2 = w2->next);
-    linelen = suffix  ||  just && (w2 || last) ?
+    linelen = suffix || (just && (w2 || last)) ?
                 L + affix :
                 w1 ? prefix + L - extra : prefix;
     q1 = malloc((linelen + 1) * sizeof (char));
