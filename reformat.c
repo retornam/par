@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.31      */
+/* for Par 1.32      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,9 +8,9 @@
 /* This is ANSI C code. */
 
 
-#include "reformat.h"  /* Makes sure we're consistent with the */
-                       /* prototype. Also includes "errmsg.h". */
-#include "buffer.h"    /* Also includes <stddef.h>.            */
+#include "reformat.h"  /* Makes sure we're consistent with the  */
+                       /* prototype.  Also includes "errmsg.h". */
+#include "buffer.h"    /* Also includes <stddef.h>.             */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +50,7 @@ const short W_SHIFTED = 1,  /* This word should have an extra space before */
 #define iscapital(w) (((w)->flags & 4) >> 2)
 
 const char * const impossibility =
-  "Impossibility #%d has occurred. Please report it.\n";
+  "Impossibility #%d has occurred.  Please report it.\n";
 
 
 static int checkcapital(word *w)

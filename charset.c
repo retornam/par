@@ -1,6 +1,6 @@
 /*********************/
 /* charset.c         */
-/* for Par 1.31      */
+/* for Par 1.32      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -200,19 +200,20 @@ static charset *csud(int u, const charset *cset1,
   lists[3] = cset2->outlist;
 
   for (list = lists;  list < lists + 4;  ++list)
-    for (p = *list;  *p;  ++p)
-      if (u  ?  csmember(*p, cset1) ||  csmember(*p, cset2)
-             :  csmember(*p, cset1) && !csmember(*p, cset2)) {
-        if (!csmember(*p, csu)) {
-          additem(inbuf,p,errmsg);
-          if (*errmsg) goto csuderror;
+    if (*list)
+      for (p = *list;  *p;  ++p)
+        if (u  ?  csmember(*p, cset1) ||  csmember(*p, cset2)
+               :  csmember(*p, cset1) && !csmember(*p, cset2)) {
+          if (!csmember(*p, csu)) {
+            additem(inbuf,p,errmsg);
+            if (*errmsg) goto csuderror;
+          }
         }
-      }
-      else
-        if (csmember(*p, csu)) {
-          additem(outbuf,p,errmsg);
-          if (*errmsg) goto csuderror;
-        }
+        else
+          if (csmember(*p, csu)) {
+            additem(outbuf,p,errmsg);
+            if (*errmsg) goto csuderror;
+          }
 
   additem(inbuf, &nullchar, errmsg);
   if (*errmsg) goto csuderror;

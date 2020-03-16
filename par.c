@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.31      */
+/* for Par 1.32      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -53,7 +53,7 @@ const char * const usagemsg =
 "           paragraph not searched for|"
                                   "l<last>   last lines treated like others\n"
 "           common prefixes & suffixes|"
-                                  "q<quote>  vacant lines inserted between\n"
+                                  "q<quote>  vacant lines supplied between\n"
 "p<prefix>  prefix length             |"
                                   "          different quote nesting levels\n"
 "s<suffix>  suffix length             |"
@@ -210,13 +210,13 @@ static char **readlines(const charset *protectchars,
 /* individual lines, stripped of their newline characters.  Every NUL */
 /* character is stripped, and every white character is changed to a   */
 /* space unless it is a newline.  If quote is 1, vacant lines will be */
-/* inserted as described for the q option in par.doc.  Returns NULL   */
+/* supplied as described for the q option in par.doc.  Returns NULL   */
 /* on failure.                                                        */
 {
   buffer *cbuf = NULL, *lbuf = NULL;
-  int c, empty, blank, nonquote, oldnonquote = 0, qplen;
-  char ch, *ln = NULL, nullchar = '\0', *nullline = NULL, *qpstart, *qpend,
-       *oldqpstart = &nullchar, *oldqpend = &nullchar, *p, *op, *vln = NULL,
+  int c, empty, blank, nonquote, oldnonquote = 0, vlnlen;
+  char ch, *ln = NULL, nullchar = '\0', *nullline = NULL, *qpend,
+       *oldln = &nullchar, *oldqpend = &nullchar, *p, *op, *vln = NULL,
        **lines = NULL;
 
   *errmsg = '\0';
@@ -239,30 +239,33 @@ static char **readlines(const charset *protectchars,
       ln = copyitems(cbuf,errmsg);
       if (*errmsg) goto rlcleanup;
       if (quote) {
-        qpstart = ln;
-        for (qpend = qpstart;
+        for (qpend = ln;
              *qpend && csmember(*qpend, quotechars);
              ++qpend);
         nonquote = *qpend != '\0';
-        while (qpend > qpstart && qpend[-1] == ' ') --qpend;
-        for (p = qpstart, op = oldqpstart;
+        while (qpend > ln && qpend[-1] == ' ') --qpend;
+        for (p = ln, op = oldln;
              p < qpend && op < oldqpend && *p == *op;
              ++p, ++op);
-        if (   (p < qpend && op == oldqpend  ||  p == qpend && op < oldqpend)
-            && nonquote && oldnonquote) {
-          qplen = p - qpstart;
-          vln = malloc((qplen + 1) * sizeof (char));
-          if (!vln) {
-            strcpy(errmsg,outofmem);
-            goto rlcleanup;
+        if (    p < qpend && op == oldqpend && oldnonquote
+            ||  p == qpend && op < oldqpend && nonquote   )
+          if (oldnonquote && nonquote) {
+            vlnlen = p - ln;
+            vln = malloc((vlnlen + 1) * sizeof (char));
+            if (!vln) {
+              strcpy(errmsg,outofmem);
+              goto rlcleanup;
+            }
+            strncpy(vln,ln,vlnlen);
+            vln[vlnlen] = '\0';
+            additem(lbuf, &vln, errmsg);
+            if (*errmsg) goto rlcleanup;
+            vln = NULL;
           }
-          strncpy(vln,qpstart,qplen);
-          vln[qplen] = '\0';
-          additem(lbuf, &vln, errmsg);
-          if (*errmsg) goto rlcleanup;
-          vln = NULL;
-        }
-        oldqpstart = qpstart;
+          else
+            if      (oldnonquote) ln[oldqpend - oldln] = '\0';
+            else if (nonquote)    oldln[qpend - ln]    = '\0';
+        oldln = ln;
         oldqpend = qpend;
         oldnonquote = nonquote;
       }
@@ -656,7 +659,7 @@ parcleanup:
   if (outlines) freelines(outlines);
 
   if (*errmsg) printf("par error:\n%.*s", errmsg_size, errmsg);
-  if (version) puts("par 1.31");
+  if (version) puts("par 1.32");
   if (help)    fputs(usagemsg,stdout);
 
   exit(*errmsg ? EXIT_FAILURE : EXIT_SUCCESS);

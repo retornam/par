@@ -1,12 +1,12 @@
   *********************
   * par.doc           *
-  * for Par 1.31      *
+  * for Par 1.32      *
   * Copyright 1993 by *
   * Adam M. Costello  *
   *********************
 
 
-    Par 1.31 is a package containing:
+    Par 1.32 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
@@ -34,7 +34,7 @@ Contents
 
 File List
 
-    The Par 1.31 package is always distributed with at least the following
+    The Par 1.32 package is always distributed with at least the following
     files:
 
         buffer.c
@@ -132,7 +132,7 @@ Release Notes
         Since Par 1.20 was posted to comp.sources.misc, I have made only
             backward-compatible changes in Par 1.30.
         Fixed the following bugs:
-            One wrong word in par.c sometimes caused par to crash. Thanks
+            One wrong word in par.c sometimes caused par to crash.  Thanks
                 go to vogelke@c-17igp.wpafb.af.mil (Contr Karl Vogel) for
                 sending me an input file that caused a crash.
             Too-long words were chopped up before the first word in a
@@ -162,7 +162,7 @@ Release Notes
         Fixed the following bug:
             In par.doc, in the example of a paragraph produced by a greedy
                 algorithm, the word "establish" appeared twice in a row.
-                Thanks go to niel@astro.rug.nl (Daniel Kussendrager) for
+                Thanks go to daniel@astro.rug.nl (Daniel Kussendrager) for
                 first pointing this out.  (The example is now even better
                 because the paragraph looks even worse than before.)
         Added the following features:
@@ -176,6 +176,23 @@ Release Notes
             The _b, _q, and _Q escape sequences for charset syntax.
         Added the term "charset syntax".
         Isolated the character set code in charset.c and charset.h.
+
+    Par 1.32 released 13 September 1993
+        Fixed the following bugs:
+            par could crash when the + or - operator was used with the B,
+                P, and Q options.  Thanks go to splat@deakin.oz.au (Andrew
+                Cashin) for reporting this.
+            If <quote> were 1 and two adjacent lines had different
+                quoteprefixes, one of which was a prefix of the other,
+                and only the line with the shorter quoteprefix contained
+                a non-quote character, then nothing would be altered.
+                According to par.doc 1.31, this was correct, but since
+                neither line is vacant, I consider this a bug in the design
+                of the <quote> feature.  Now the longer quoteprefix will be
+                truncated to match the shorter one, and will therefore be
+                vacant.  (Inspired by a question from splat@deakin.oz.au
+                (Andrew Cashin).)
+        Made slight changes to the documentation.
 
 
 Compilation
@@ -351,10 +368,11 @@ Terminology
     Types of words:
 
         capitalized word
-            If <cap> is 0, a capitalized word is one which contains at
-            least one alphanumeric character, whose first alphanumeric
-            character is not a lower case letter.  If <cap> is 1, every word
-            is considered a capitalized word.
+            If the parameter <cap> is 0, a capitalized word is one which
+            contains at least one alphanumeric character, whose first
+            alphanumeric character is not a lower case letter.  If <cap>
+            is 1, every word is considered a capitalized word.  (See the c
+            option in the Options section.)
 
         curious word
             A word which contains a terminal character <c> such that there
@@ -469,13 +487,17 @@ Options
                 about the same length as the others.  Defaults to 0.
 
     q[<quote>]  If <quote> is 1, then before each segment is scanned for
-                vacant lines, par will insert some new lines as follows:
-                For each pair of adjacent lines in the segment, if the
-                quoteprefix of one is a prefix of (but not the same as) the
-                quoteprefix of the other, and each of the two lines contains
-                at least one non-quote character, then a line consisting of
-                the smaller quoteprefix will be inserted between the two
-                lines.  <quote> also affects the default value of <prefix>.
+                vacant lines, par will supply vacant lines between different
+                quotation nesting levels as follows:  For each pair of
+                adjacent lines in the segment, if the quoteprefix of one
+                is a prefix of (but not the same as) the quoteprefix of
+                the other, and the line containing the shorter quoteprefix
+                contains a non-quote character, then one of two changes
+                will be made:  If the other line also contains a non-quote
+                character, then a line consisting of the smaller quoteprefix
+                will be inserted between the two lines; otherwise, the
+                longer quoteprefix will be truncated to match the shorter
+                one. <quote> also affects the default value of <prefix>.
                 Defaults to 0.  (See also the p option.)
 
     R[<Report>] If <Report> is 1, it will be considered an error for an
@@ -930,12 +952,47 @@ Examples
 
     Before:
 
+        1. We the people of the United States.
+        2. In order to form a more perfect union.
+        3. Establish justice, ensure domestic tranquility.
+        4. Provide for the common defense
+        5. Promote the general welfare.
+        6. And secure the blessing of liberty
+           to ourselves and our posterity.
+        7. Do ordain and establish the Constitution.
+        8. Of the United States of America.
+
+    After "par 35p11dh":
+
+        1. We the people of the
+           United States.
+        2. In order to form a more
+           perfect union.
+        3. Establish justice,
+           ensure domestic
+           tranquility.
+        4. Provide for the common
+           defense
+        5. Promote the general
+           welfare.
+        6. And secure the blessing
+           of liberty to ourselves
+           and our posterity.
+        7. Do ordain and establish
+           the Constitution.
+        8. Of the United States of
+           America.
+
+    Before:
+
         Joe Public writes:
         > Jane Doe writes:
+        > >
         > > I can't find the source for uncompress.
         > Oh no, not again!!!
         >
         > Isn't there a FAQ for this?
+        >
         That wasn't very helpful, Joe. Jane,
         just make a link from uncompress to compress.
 
@@ -973,6 +1030,32 @@ Examples
         I sure hope there's still room in
         Dr. Jones' section of archaeology.  I've
         heard he's the bestest.  [sic]
+
+    Before:
+
+        John writes:
+        : Mary writes:
+        : + Anastasia writes:
+        : + > Hi all!
+        : + Hi Ana!
+        : Hi Ana & Mary!
+        Please unsubscribe me from alt.hello.
+
+    After "par Q+:+ q":
+
+        John writes:
+
+        : Mary writes:
+        :
+        : + Anastasia writes:
+        : +
+        : + > Hi all!
+        : +
+        : + Hi Ana!
+        :
+        : Hi Ana & Mary!
+
+        Please unsubscribe me from alt.hello.
 
 
 Limitations

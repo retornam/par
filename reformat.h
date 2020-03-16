@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.h        */
-/* for Par 1.31      */
+/* for Par 1.32      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -18,9 +18,9 @@ char **reformat(
 );
   /* inlines is an array of pointers to input lines, up to but not     */
   /* including endline.  The other parameters are the variables of the */
-  /* same name as described in "par.doc". reformat(inlines, endline,   */
+  /* same name as described in "par.doc".  reformat(inlines, endline,  */
   /* hang, prefix, suffix, width, cap, fit, guess, just, last, Report, */
   /* touch, errmsg) returns a NULL-terminated array of pointers to     */
   /* output lines containing the reformatted paragraph, according to   */
   /* the specification in "par.doc".  None of the integer parameters   */
-  /* may be negative. Returns NULL on failure.                         */
+  /* may be negative.  Returns NULL on failure.                        */

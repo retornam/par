@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.31      *
+.\"* for Par 1.32      *
 .\"* Copyright 1993 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "7 September 1993" "Par 1.31" "USER COMMANDS"
+.TH par 1 "13 September 1993" "Par 1.32" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -230,13 +230,17 @@ lines and/or the beginning/end of the segment.
 Types of words:
 .RS
 .IP "capitalized word"
-If
+If the parameter
 .I cap
 is 0, a capitalized word is one which contains
 at least one alphanumeric character, whose first
 alphanumeric character is not a lower case letter.  If
 .I cap
-is 1, every word is considered a capitalized word.
+is 1, every word is considered a capitalized word.  (See the
+.B c
+option in the
+.SM OPTIONS
+section.)
 .IP "curious word"
 A word which contains a terminal character
 .I c
@@ -259,7 +263,7 @@ line argument, but there are exceptions:  The
 .BR P ,
 and
 .B Q
-options must have a whole arguments all to themselves.
+options must have whole arguments all to themselves.
 .TP 1i
 .B help
 Causes all remaining arguments to be ignored.  No
@@ -269,7 +273,7 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.31\*U is printed on the output.  Of
+is read.  \*Qpar 1.32\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
@@ -479,12 +483,16 @@ If
 .I quote
 is 1, then before each segment is scanned for vacant lines,
 .B par
-will insert some new lines as follows:  For each pair of
-adjacent lines in the segment, if the quoteprefix of one
-is a prefix of (but not the same as) the quoteprefix of
-the other, and each of the two lines contains at least
-one non-quote character, then a line consisting of the
-smaller quoteprefix will be inserted between the two lines.
+will supply vacant lines between different quotation nesting
+levels as follows:  For each pair of adjacent lines in
+the segment, if the quoteprefix of one is a prefix of
+(but not the same as) the quoteprefix of the other, and
+the line containing the shorter quoteprefix contains a
+non-quote character, then one of two changes will be made:
+If the other line also contains a non-quote character,
+then a line consisting of the smaller quoteprefix will
+be inserted between the two lines; otherwise, the longer
+quoteprefix will be truncated to match the shorter one.
 .I quote
 also affects the default value of
 .IR prefix .
@@ -1189,12 +1197,50 @@ After
 .LP
 Before:
 .VS
+        1. We the people of the United States.
+        2. In order to form a more perfect union.
+        3. Establish justice, ensure domestic tranquility.
+        4. Provide for the common defense
+        5. Promote the general welfare.
+        6. And secure the blessing of liberty
+           to ourselves and our posterity.
+        7. Do ordain and establish the Constitution.
+        8. Of the United States of America.
+.VE
+.LP
+After
+.CM "par 35p11dh"
+.VS
+        1. We the people of the
+           United States.
+        2. In order to form a more
+           perfect union.
+        3. Establish justice,
+           ensure domestic
+           tranquility.
+        4. Provide for the common
+           defense
+        5. Promote the general
+           welfare.
+        6. And secure the blessing
+           of liberty to ourselves
+           and our posterity.
+        7. Do ordain and establish
+           the Constitution.
+        8. Of the United States of
+           America.
+.VE
+.LP
+Before:
+.VS
         Joe Public writes:
         > Jane Doe writes:
+        > >
         > > I can't find the source for uncompress.
         > Oh no, not again!!!
         >
         > Isn't there a FAQ for this?
+        >
         That wasn't very helpful, Joe. Jane,
         just make a link from uncompress to compress.
 .VE
@@ -1239,6 +1285,35 @@ Or after
         I sure hope there's still room in
         Dr. Jones' section of archaeology.  I've
         heard he's the bestest.  [sic]
+.VE
+.LP
+Before:
+.VS
+        John writes:
+        : Mary writes:
+        : + Anastasia writes:
+        : + > Hi all!
+        : + Hi Ana!
+        : Hi Ana & Mary!
+        Please unsubscribe me from alt.hello.
+.VE
+.LP
+After
+.CM "par Q+:+ q"
+.VS
+        John writes:
+
+        : Mary writes:
+        :
+        : + Anastasia writes:
+        : +
+        : + > Hi all!
+        : +
+        : + Hi Ana!
+        :
+        : Hi Ana & Mary!
+
+        Please unsubscribe me from alt.hello.
 .VE
 .SH SEE ALSO
 .LP

@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.c          */
-/* for Par 1.31      */
+/* for Par 1.32      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
