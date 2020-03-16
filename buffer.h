@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.h          */
-/* for Par 1.20      */
+/* for Par 1.30      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -22,18 +22,18 @@ struct buffer;
 
 struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg);
 
-  /* newbuffer(itemsize,errmsg) returns a pointer to */
-  /* a new empty struct buffer which holds items of  */
-  /* size itemsize. Any struct buffer *buf passed to */
-  /* any function declared in this header must have  */
-  /* been obtained from this function. itemsize must */
-  /* not be 0. Returns NULL on failure.              */
+  /* newbuffer(itemsize,errmsg) returns a pointer to a */
+  /* new empty struct buffer which holds items of size */
+  /* itemsize.  Any struct buffer *buf passed to any   */
+  /* function declared in this header must have been   */
+  /* obtained from this function.  itemsize must not   */
+  /* be 0.  Returns NULL on failure.                   */
 
 
 void freebuffer(struct buffer *buf);
 
-  /* freebuffer(buf) frees the memory associated     */
-  /* with *buf. buf may not be used after this call. */
+  /* freebuffer(buf) frees the memory associated with */
+  /* *buf.  buf may not be used after this call.      */
 
 
 void clearbuffer(struct buffer *buf);
@@ -45,8 +45,9 @@ void clearbuffer(struct buffer *buf);
 
 void additem(struct buffer *buf, const void *item, errmsg_t errmsg);
 
-  /* additem(buf,item,errmsg) copies *item to the end of *buf. */
-  /* item must point to an object of the proper size for *buf. */
+  /* additem(buf,item,errmsg) copies *item to the end of     */
+  /* *buf.  item must point to an object of the proper size  */
+  /* for *buf.  If additem() fails, *buf will be unaffected. */
 
 
 int numitems(struct buffer *buf);
@@ -58,18 +59,18 @@ void *copyitems(struct buffer *buf, errmsg_t errmsg);
 
   /* copyitems(buf,errmsg) returns an array of objects of the proper size */
   /* for *buf, one for each item in *buf, or (void *) 0 if there are no   */
-  /* items in buf. The elements of the array are copied from the items in */
-  /* *buf, in order. The array is allocated with malloc(), so it may be   */
-  /* freed with free(). Returns NULL on failure.                          */
+  /* items in buf.  The elements of the array are copied from the items   */
+  /* in *buf, in order.  The array is allocated with malloc(), so it may  */
+  /* be freed with free().  Returns NULL on failure.                      */
 
 
 void *nextitem(struct buffer *buf);
 
-  /* When buf was created by newbuffer, a pointer associated with buf  */
-  /* was initialized to point at the first slot in buf. If there is an */
-  /* item in this slot, nextitem(buf) advances the pointer to the next */
-  /* slot and returns the old value. If there is no item in the slot,  */
-  /* nextitem(buf) leaves the pointer where it is and returns NULL.    */
+  /* When buf was created by newbuffer, a pointer associated with buf   */
+  /* was initialized to point at the first slot in buf.  If there is an */
+  /* item in this slot, nextitem(buf) advances the pointer to the next  */
+  /* slot and returns the old value.  If there is no item in the slot,  */
+  /* nextitem(buf) leaves the pointer where it is and returns NULL.     */
 
 
 void rewindbuffer(struct buffer *buf);

@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.20      *
+.\"* for Par 1.30      *
 .\"* Copyright 1993 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "10 August 1993" "Par 1.20" "USER COMMANDS"
+.TH par 1 "18 August 1993" "Par 1.30" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -26,8 +26,11 @@ par \- filter for reformatting paragraphs
 .OP w width
 .OP d \*Odiv\*C
 .OP f \*Ofit\*C
+.OP g \*Oguess\*C
 .OP j \*Ojust\*C
 .OP l \*Olast\*C
+.OP q \*Oquote\*C
+.OP R \*OReport\*C
 .OP t \*Otouch\*C
 .br
 .ad
@@ -42,44 +45,91 @@ par \- filter for reformatting paragraphs
 ..
 .LP
 .B par
-is a filter which copies its input to its output, changing
-all white characters (except newlines) to spaces, and
-reformatting each paragraph. Paragraphs are delimited
-by vacant lines, which are lines containing no more
-than a prefix, suffix, and intervening spaces (see the
-.SM DETAILS
-section for a precise definition).
+is a filter which copies its input to its output,
+changing all white characters (except newlines) to
+spaces, and reformatting each paragraph.  Paragraphs are
+delimited by protected, blank, and vacant lines, (see the
+.SM TERMINOLOGY
+section for definitions), and
+optionally by indentation (see the
+.B d
+option in the
+.SM OPTIONS
+section).
 .LP
-Each output paragraph is generated from
-the corresponding input lines as follows:
+Each output paragraph is generated from the
+corresponding input paragraph as follows:
 .RS
 .LP
-.IT 1. An optional prefix and/or suffix
+.IT 1) An optional prefix and/or suffix
 is removed from each input line.
-.IT 2. The remainder is divided into
+.IT 2) The remainder is divided into
 words (delimited by spaces).
-.IT 3. The words are joined into lines
+.IT 3) The words are joined into lines
 to make an eye-pleasing paragraph.
-.IT 4. The prefixes and suffixes are reattached.
+.IT 4) The prefixes and suffixes are reattached.
 .RE
 .LP
 If there are suffixes, spaces are inserted before
 them so that they all end in the same column.
-.SH TERMS
-.TP 1i
-body character
+.SH TERMINOLOGY
+.LP
+Miscellaneous terms:
+.RS
+.IP error
+A condition which causes
+.B par
+to abort.  See the
+.SM DIAGNOSTICS
+section.
+.IP IP
+Input paragraph.
+.IP OP
+Output paragraph.
+.IP parameter
+A symbol which may take on unsigned integral values.  There
+are several parameters whose values affect the behavior of
+.BR par .
+Parameters can be assigned values
+using command line options.
+.RE
+.LP
+Types of characters:
+.RS
+.IP "alphanumeric character"
+An upper case letter, lower case letter, or decimal digit.
+.IP "body character"
 A member of the set of characters defined by the
 .SM PARBODY
 environment variable (see the
 .SM ENVIRONMENT
 section).
-.TP
-comprelen
+.IP "protective character"
+A member  of the set of characters defined by the
+.SM PARPROTECT
+environment variable (see the
+.SM ENVIRONMENT
+section).
+.IP "quote character"
+A member of the set of characters defined by the
+.SM PARQUOTE
+environment variable (see the
+.SM ENVIRONMENT
+section).
+.IP "terminal character"
+A period, question mark, exclamation point, or colon.
+.IP "white character"
+A space, formfeed, newline, carriage
+return, tab, or vertical tab.
+.RE
+.LP
+Functions:
+.RS
+.IP comprelen
 The comprelen of a non-empty set of lines is the
 length of the longest string of non-body characters
 appearing at the beginning of every line in the set.
-.TP
-comsuflen
+.IP comsuflen
 Given a non-empty set
 .I S
 of lines, let
@@ -99,46 +149,97 @@ appearing at the end of every line in
 .IR T .
 Strip
 .I c
-of all initial spaces except the last. The length of
+of all initial spaces except the last.  The length of
 .I c
 is the comsuflen of
 .IR S .
-.TP
-IP
-Input paragraph.
-.TP
-OP
-Output paragraph.
-.TP
-white character
-A space, formfeed, newline, carriage
-return, tab, or vertical tab.
+.IP quoteprefix
+The quoteprefix of a line is the longest string of quote
+characters appearing at the beginning of the line, after
+this string has been stripped of any trailing spaces.
+.RE
+.LP
+Types of lines:
+.RS
+.IP "blank line"
+An empty line, or a line whose first character is
+not protective and which contains only spaces.
+.IP "protected line"
+An input line whose first character is protective.
+.IP "vacant line"
+Any line which can be shown to be vacant by a finite number
+of applications of the following recursive rule:  Suppose
+.I S
+is a subsequence of a segment (see below)
+bounded above and below by vacant lines or
+by the beginning/end of the segment.  Let
+.I p
+and
+.I s
+be the comprelen and comsuflen of
+.IR S .
+Any member of
+.I S
+which, if stripped of its first
+.I p
+characters and last
+.I s
+characters, would be blank, is vacant.
+.RE
+.LP
+Groups of lines:
+.RS
+.IP segment
+A contiguous sequence of input lines containing no protected
+or blank lines, bounded above and below by protected
+lines, blank lines, and/or the beginning/end of the input.
+.IP block
+A contiguous subsequence of a segment containing
+no vacant lines, bounded above and below by vacant
+lines and/or the beginning/end of the segment.
+.RE
+.LP
+Types of words:
+.RS
+.IP "capitalized word"
+A word which contains at least one alphanumeric
+character, whose first alphanumeric
+character is not a lower case letter.
+.IP "curious word"
+A word which contains a terminal character
+.I c
+such that there are no alphanumeric
+characters in the word after
+.IR c ,
+but there is at least one alphanumeric character in the word before
+.IR c .
+.RE
 .SH OPTIONS
 .LP
-Any command line argument may begin with one
-minus sign (\-) which is ignored. Generally, more
+Any command line argument may begin with one minus
+sign (\-) which is ignored.  Generally, more
 than one option may appear in a single command
-line argument, but there is one exception: the
+line argument, but there is one exception:  The
 .B version
 option must have a whole argument all to itself.
 .TP 1i
 .B version
-Causes all remaining arguments to be ignored. No input
-is read. \*Qpar 1.20\*U is printed on the output. Of
+Causes all remaining arguments to be ignored.  No input
+is read.  \*Qpar 1.30\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .LP
-All remaining options are used to set values of variables.
-Values set by command line options hold for all paragraphs
-in the input. Unset variables are given default values.
-Any unset variables whose default values depend on
-the IP are recomputed separately for each paragraph.
+All remaining options are used to set values of
+parameters.  Values set by command line options hold
+for all paragraphs.  Unset parameters are given default
+values.  Any unset parameters whose default values depend
+on the IP are recomputed separately for each paragraph.
 .LP
 The approximate role of each
-variable is described here. See the
+variable is described here.  See the
 .SM DETAILS
-section for a much more complete and precise description.
+section for the rest of the story.
 .LP
-The first four variables,
+The first four parameters,
 .IR hang ,
 .IR prefix ,
 .IR suffix ,
@@ -151,10 +252,10 @@ Mainly affects the default values of
 .I prefix
 and
 .IR suffix .
-Defaults to 0. If the
+Defaults to 0.  If the
 .B h
 option is given without a number, the
-value 1 is inferred. (See also the
+value 1 is inferred.  (See also the
 .B p
 and
 .B s
@@ -166,29 +267,35 @@ The first
 characters of each line of the OP are copied from the first
 .I prefix
 characters of the corresponding line
-of the IP. Defaults to 0 if there are
-less than
-.IR hang \ +\ 2
-lines in the IP. Otherwise, defaults to the comprelen
+of the IP.  If there are more than
+.IR hang \ +\ 1
+lines in the IP, the default value is the comprelen
 of all the lines in the IP except the first
 .I hang
-of them. (See also the
+of them.  If there are exactly
+.IR hang \ +\ 1
+lines in the IP and
+.I quote
+is 1, the default value is the number of
+leading quote characters in the last line.
+Otherwise, the default value is 0.  (See also the
 .B h
-option.)
+and
+.B q
+options.)
 .TP
 .BI s suffix
 The last
 .I suffix
 characters of each line of the OP are copied from the last
 .I suffix
-characters of the corresponding line of the
-IP. Defaults to 0 if there are less than
-.IR hang \ +\ 2
-lines in the IP.
-Otherwise, defaults to the comsuflen of
-all the lines of the IP except the first
+characters of the corresponding line
+of the IP.  If there are more than
+.IR hang \ +\ 1
+lines in the IP, the default value is the comsuflen
+of all the lines of the IP except the first
 .I hang
-of them. (See also the
+of them.  Otherwise the default value is 0.  (See also the
 .B h
 option.)
 .TP
@@ -196,31 +303,34 @@ option.)
 No line in the OP will contain more than
 .I width
 characters, not including the
-trailing newlines. Defaults to 72.
+trailing newlines.  Defaults to 72.
 .LP
-The remaining five variables,
+The remaining eight parameters,
 .IR div,
 .IR fit,
+.IR guess,
 .IR just,
 .IR last,
+.IR quote,
+.IR Report,
 and
 .IR touch,
-may be set to either 0 or 1. If the number is
+may be set to either 0 or 1.  If the number is
 absent in the option, the value 1 is inferred.
 .TP 1i
 .BI d\fR[ div\fR]
 If
 .I div
-is 1, then each block of text that would normally count
-as a paragraph (delimited by vacant lines) will be
-further subdivided into paragraphs as follows. Let
+is 0, then each block becames an IP.  If
+.I div
+is 1, then each block is subdivided into IPs as follows:  Let
 .I p
-be the comprelen of all the lines in the
-block. Let a line's status be 1 if its
+be the comprelen of the block.
+Let a line's status be 1 if its
 .RI ( p \ +\ 1)st
-character is a space, 0 otherwise. Every line in the
+character is a space, 0 otherwise.  Every line in the
 block whose status is the same as the status of the
-first line will begin a new paragraph. Defaults to 0.
+first line will begin a new paragraph.  Defaults to 0.
 .TP
 .BI f\fR[ fit\fR]
 If
@@ -231,9 +341,24 @@ is 0,
 .B par
 will try to make the lines in the OP as nearly the
 same length as possible, even if it means making
-the OP narrower. Defaults to 0. (See also the
+the OP narrower.  Defaults to 0.  (See also the
 .B j
 option.)
+.TP
+.BI g\fR[ guess\fR]
+If
+.I guess
+is 1, then when
+.B par
+is choosing line breaks, whenever it encounters a curious
+word followed by a capitalized word, it take one of two
+special actions.  If the two words are separated by a single
+space in the input, they will be merged into one word with
+an embedded non-breaking space.  If the two words are
+separated by more than one space, or by a line break, then
+.B par
+will insure that they are separated by two spaces,
+or by a line break, in the output.  Defaults to 0.
 .TP
 .BI j\fR[ just\fR]
 If
@@ -249,7 +374,7 @@ is 0).
 .I fit
 has no effect if
 .I just
-is 1. Defaults to 0. (See also the
+is 1.  Defaults to 0.  (See also the
 .BR w ,
 .BR l ,
 and
@@ -262,21 +387,58 @@ If
 is 1,
 .B par
 tries to make the last line of the OP about
-the same length as the others. Defaults to 0.
+the same length as the others.  Defaults to 0.
+.TP
+.BI q\fR[ quote\fR]
+If
+.I quote
+is 1, then before each segment is scanned for vacant lines,
+.B par
+will insert some new lines as follows:  For each pair of
+adjacent lines in the segment, if the quoteprefix of one
+is a prefix of (but not the same as) the quoteprefix of
+the other, and each of the two lines contains at least
+one non-quote character, then a line consisting of the
+smaller quoteprefix will be inserted between the two lines.
+.I quote
+also affects the default value of
+.IR prefix .
+Defaults to 0.  (See also the
+.B p
+option.)
+.TP
+.BI R\fR[ Report\fR]
+If
+.I Report
+is 1, then it will be considered an error
+for an input word to contain more than
+.IR L \ =
+.RI ( width \ -
+.IR prefix \ -
+.IR suffix )
+characters.  Otherwise, such
+words will be chopped after each
+.IR L th
+character into shorter words.  Defaults to 0.  It
+is recommended that this option be included in
+.SM PARINIT
+(see the
+.SM ENVIRONMENT
+section).
 .TP
 .BI t\fR[ touch\fR]
 Has no effect if
 .I suffix
 is 0 or
 .I just
-is 1. Otherwise, if
+is 1.  Otherwise, if
 .I touch
 is 0, all lines in the OP have length
 .IR width .
 If
 .I touch
 is 1, then the length of the lines is decreased until the
-suffixes touch the body of the OP. Defaults to the logical
+suffixes touch the body of the OP.  Defaults to the logical
 .SM OR
 of
 .I fit
@@ -291,11 +453,13 @@ and
 .B l
 options.)
 .LP
-If the value of any variable is set more
-than once, the last value is used. When
-unset variables are assigned default values,
+If the value of any parameter is set more
+than once, the last value is used.  When
+unset parameters are assigned default values,
 .I hang
-is assigned before
+and
+.I quote
+are assigned before
 .IR prefix ,
 and
 .I fit
@@ -313,24 +477,17 @@ It is an error if
 .IR suffix .
 .SH ENVIRONMENT
 .TP 1i
-.SM PARINIT
-If set,
-.B par
-will read command line options from
-.SM PARINIT
-before it reads them from the command line.
-.TP
 .SM PARBODY
 All and only the characters appearing in the value of
 .SM PARBODY
 count as body characters (which are used for determining
-comprelens and comsuflens). The underscore is an escape
+comprelens and comsuflens).  The underscore is an escape
 character, which may begin the following escape sequences:
 .RS 2i
 .IT __\ = an underscore
 .IT _s\ = a space
-.IT _A\ = all upper case characters
-.IT _a\ = all lower case characters
+.IT _A\ = all upper case letters
+.IT _a\ = all lower case letters
 .IT _0\ = all decimal digits
 .IT _x\fIhh\fP\ = the character represented
 by the two hexadecimal digits
@@ -345,8 +502,31 @@ is not set, there are no body characters.
 .LP
 A good value for
 .SM PARBODY
-might be \*Q_a_A.\*U, but it depends on the application.
+might be \*Q_A_a.\*U, but it depends on the application.
 .RE
+.TP
+.SM PARINIT
+If set,
+.B par
+will read command line options from
+.SM PARINIT
+before it reads them from the command line.
+.TP
+.SM PARPROTECT
+Determines the set of protective
+characters, using the same syntax as
+.SM PARBODY\s0.
+If
+.SM PARPROTECT
+is not set, there are no protective characters.
+.TP
+.SM PARQUOTE
+Determines the set of quote characters, using the same syntax as
+.SM PARBODY\s0.
+If
+.SM PARQUOTE
+is not set, then the quote characters
+are the greater-than sign and the space.
 .LP
 If a
 .SM NUL
@@ -355,66 +535,41 @@ it and the rest of the string will not be seen by
 .BR par .
 .SH DETAILS
 .LP
-Every white
-character in the input (unless it is a newline)
-is changed into a space immediately after it
-has been read. NUL characters in the input are
-invisible, just as if they weren't there at all.
-.LP
 Lines are terminated by newline characters, but the
 newlines are not considered to be included in the lines.
 If the last character of the input is a non-newline,
 then a newline will be inferred immediately after
 it (but if the input is empty, no newline will be
-inferred; the number of input lines will be 0). Thus,
+inferred; the number of input lines will be 0).  Thus,
 the input can always be viewed as a sequence of lines.
 .LP
-Vacant lines in the input are defined
-recursively by the following rules:
-.RS
-.IT 1) Any line which is empty or
-contains only spaces is vacant.
-.IT 2) Suppose
-.I A
-and
-.I B
-are two vacant lines with at
-least two lines between them. Let
-.I p
-and
-.I s
-be the comprelen and comsuflen of the intervening
-lines. Any intervening line which, if stripped of
-its first
-.I p
-characters and last
-.I s
-characters, would be empty, or would
-contain only spaces, is vacant.
-.IT 3) If a line cannot be shown to
-be vacant by repeated application of
-rules 1 and 2, then it is not vacant.
-.RE
+Protected lines are copied unchanged from the input to the
+output.  All other input lines, as they are read, have any
+.SM NUL
+characters removed, and every white character
+(except newlines) turned into a space.
 .LP
-A subsequence of non-vacant lines in the input is called
-a block if there is no non-vacant line immediately
-above or below it (i.e., if it is maximal). If
+Blank lines in the input are transformed into empty
+lines in the output.  Vacant lines in the input are
+stripped of trailing spaces before being output.
+.LP
+The input is divided into segments, which are
+divided into blocks, which are divided into
+IPs.  The exact process depends on the values of
+.I quote
+and
 .I div
-is 0, then the IPs are exactly the blocks. If
-.I div
-is 1, then the IPs are the subdivisions
-of the blocks as described in the
+(see
+.B q
+and
+.B d
+in the
 .SM OPTIONS
-section in the entry for
-.IR div .
+section).  The remainder of this section describes
+the process which is applied independently to
+each IP to construct the corresponding OP.
 .LP
-Each vacant line of the input is copied to the
-output unchanged except that any trailing spaces
-are stripped. The remainder of this section
-describes the process which is applied independently
-to each IP to construct the corresponding OP.
-.LP
-After the values of the variables are determined (see the
+After the values of the parameters are determined (see the
 .SM OPTIONS
 section), the first
 .I prefix
@@ -426,13 +581,17 @@ It is an error for any line to contain fewer than
 characters.
 .LP
 The remaining text is treated as a sequence of
-characters, not lines. The text is broken into
-words, which are delimited by spaces. That is, a
-.I word
-is a maximal sub-sequence of non-spaces. If
-there is at least one word, and the first word
-is preceeded only by spaces, then the first
-word is expanded to include those spaces.
+characters, not lines.  The text is broken into
+words, which are delimited by spaces.  That is, a
+word
+is a maximal sub-sequence of non-spaces.  If
+.I guess
+is 1, then some words might be merged (see
+.B g
+in the
+.SM OPTIONS
+section).  The first word includes any
+spaces that preceed it on the same line.
 .LP
 Let
 .I L
@@ -443,17 +602,22 @@ Let
 \-
 .IR suffix .
 .LP
-Every word which contains more than
-.I L
-characters is broken, after each
-.IR L th
-character, into multiple words.
+If
+.I Report
+is 0, then some words may get chopped up at this point (see
+.B R
+in the
+.SM
+OPTIONS
+section).
 .LP
-These words are reassembled, preserving their
-order, into lines. If
+The words are reassembled, preserving
+their order, into lines.  If
 .I just
-is 0, adjacent words within a line are separated by
-a single space, and line breaks are chosen so that
+is 0, adjacent words within a line are separated
+by a single space, (or sometimes two if
+.I guess
+is 1), and line breaks are chosen so that
 the paragraph satisfies the following properties:
 .RS 1i
 .IT 1) No line contains more than
@@ -473,7 +637,7 @@ if
 .I fit
 is 0, or the length of the longest line if
 .I fit
-is 1. The sum of the squares of the differences between
+is 1.  The sum of the squares of the differences between
 .I target
 and the lengths of the lines is as small as
 possible, subject to properties 1, 2, and 3.
@@ -487,13 +651,15 @@ for the purposes of properties 2, 3, and 4 above.
 .LP
 If all the words fit on a single line, then
 the properties as worded above don't make much
-sense. In that case, no line breaks are inserted.
+sense.  In that case, no line breaks are inserted.
 .RE
 .LP
 If
 .I just
-is 1, then adjacent words within a line are separated by
-one space plus zero or more extra spaces, the value of
+is 1, then adjacent words within a line are
+separated by one space (or sometimes two if
+.I guess
+is 1) plus zero or more extra spaces.  The value of
 .I fit
 is disregarded, and line breaks are chosen so that
 the paragraph satisfies the following properties:
@@ -501,11 +667,12 @@ the paragraph satisfies the following properties:
 .IT 1) Every line contains exactly
 .I L
 characters.
-.IT 2) The largest inter-word gap is as
-small as possible, subject to property 1.
-.IT 3) The sum of the squares of the numbers
-of extra spaces required in each inter-word gap is
-as small as possible, subject to properties 1 and 2.
+.IT 2) The largest inter-word gap is as small as
+possible, subject to property 1.  (An inter-word gap
+consists only of the extra spaces, not the regular spaces.)
+.IT 3) The sum of the squares of the lengths
+of the inter-word gaps is as small as
+possible, subject to properties 1 and 2.
 .RE
 .RS .5i
 .LP
@@ -518,12 +685,10 @@ does not require or contain any extra spaces.
 Extra spaces are distributed as uniformly as
 possible among the inter-word gaps in each line.
 .LP
-Some paragraphs are impossible to justify,
-because they contain words too long relative to
-.IR L .
-If this is the case, it is considered an error (see the
-.SM DIAGNOSTICS
-section).
+In a justified paragraph, every line must
+contain at least two words, but that's not
+always possible to accomplish.  If the paragraph
+cannot be justified, it is considered an error.
 .RE
 .LP
 If the number of lines in the
@@ -549,9 +714,9 @@ end with spaces to bring its length up to
 .LP
 To each line is prepended
 .I prefix
-characters. Let
+characters.  Let
 .I n
-be the number of lines in the IP. The
+be the number of lines in the IP.  The
 characters which are prepended to the
 .IR i th
 line are chosen as follows:
@@ -586,7 +751,7 @@ then the characters are all spaces.
 .LP
 Then to each line is appended
 .I suffix
-characters. The characters which are appended to the
+characters.  The characters which are appended to the
 .IR i th
 line are chosen as follows:
 .RS
@@ -627,9 +792,9 @@ will return
 .SM EXIT_FAILURE\s0\.
 If the error is local to a single paragraph, then the
 preceeding paragraphs will have been output before the
-error was detected. Line numbers in error messages are
-local to the IP in which the error occurred. All error
-messages begin with "par error:" on a line by itself.
+error was detected.  Line numbers in error messages are
+local to the IP in which the error occurred.  All error
+messages begin with \*Qpar error:\*U on a line by itself.
 .LP
 Of course, trying to print an error message would be
 futile if an error resulted from an output function, so
@@ -717,7 +882,7 @@ are clearly more eye-pleasing.
 .B par
 is most useful in conjunction with the text-filtering
 features of an editor, such as the ! commands of
-.BR vi.
+.BR vi .
 .LP
 The rest of this section is a series of
 before-and-after pictures showing some typical uses of
@@ -892,92 +1057,182 @@ After
 .LP
 Before:
 .VS
-        > >   We the people of the United States, in
-        > > order to form a more perfect union,
-        > >   Establish justice, ensure domestic
-        > > tranquility, provide for the common defense,
+        > > We the people
+        > > of the United States,
+        > > in order to form a more perfect union,
+        > > establish justice,
+        > > ensure domestic tranquility,
+        > > provide for the common defense,
         >
-        >   Promote the general welfare, and secure
-        > the blessing of liberty to ourselves and
-        > our posterity,
-        >   Do ordain and establish the Constitution
-        > of the United States of America.
+        > Promote the general welfare,
+        > and secure the blessing of liberty
+        > to ourselves and our posterity,
+        > do ordain and establish
+        > the Constitution of the United States of America.
 .VE
 .LP
 After
-.CM "par 42d"
+.CM "par 52"
 .VS
-        > >   We the people of the United
-        > > States, in order to form a
-        > > more perfect union,
-        > >   Establish justice, ensure
-        > > domestic tranquility, provide
-        > > for the common defense,
+        > > We the people of the United States, in
+        > > order to form a more perfect union,
+        > > establish justice, ensure domestic
+        > > tranquility, provide for the common
+        > > defense,
         >
+        > Promote the general welfare, and secure
+        > the blessing of liberty to ourselves and
+        > our posterity, do ordain and establish
+        > the Constitution of the United States of
+        > America.
+.VE
+.LP
+Before:
+.VS
+        >   We the people
+        > of the United States,
+        > in order to form a more perfect union,
+        > establish justice,
+        > ensure domestic tranquility,
+        > provide for the common defense,
         >   Promote the general welfare,
-        > and secure the blessing of
-        > liberty to ourselves and our
-        > posterity,
-        >   Do ordain and establish the
-        > Constitution of the United
-        > States of America.
+        > and secure the blessing of liberty
+        > to ourselves and our posterity,
+        > do ordain and establish
+        > the Constitution of the United States of America.
+.VE
+.LP
+After
+.CM "par 52d"
+.VS
+        >   We the people of the United States,
+        > in order to form a more perfect union,
+        > establish justice, ensure domestic
+        > tranquility, provide for the common
+        > defense,
+        >   Promote the general welfare, and secure
+        > the blessing of liberty to ourselves and
+        > our posterity, do ordain and establish
+        > the Constitution of the United States of
+        > America.
+.VE
+.LP
+Before:
+.VS
+        Joe Public writes:
+        > Jane Doe writes:
+        > > I can't find the source for uncompress.
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
+        That wasn't very helpful, Joe. Jane,
+        just make a link from uncompress to compress.
+.VE
+.LP
+After
+.CM "par 40q"
+.VS
+        Joe Public writes:
+
+        > Jane Doe writes:
+        >
+        > > I can't find the source for
+        > > uncompress.
+        >
+        > Oh no, not again!!!
+        >
+        > Isn't there a FAQ for this?
+
+        That wasn't very helpful, Joe.
+        Jane, just make a link from
+        uncompress to compress.
+.VE
+.LP
+Before:
+.VS
+        I sure hope there's still room
+        in Dr. Jones' section of archaeology.
+        I've heard he's the best.
+.VE
+.LP
+After
+.CM "par 50g"
+.VS
+        I sure hope there's still room in
+        Dr. Jones' section of archaeology.  I've
+        heard he's the best.
 .VE
 .SH SEE ALSO
 .LP
 .B par.doc
 .SH LIMITATIONS
 .LP
-If you like two spaces between sentences, too
-bad. Differentiating between periods that end
-sentences and periods used in abbreviations
-is a complex problem beyond the scope of this
-simple filter. Consider the following tough case:
+The
+.I guess
+feature guesses wrong in cases like the following:
 .VS
         I calc'd the approx.
         Fermi level to 3 sig. digits.
 .VE
 .LP
-Suppose that that should be reformatted to:
+With
+.I guess
+= 1,
+.B par
+will incorrectly assume that \*Qapprox.\*U
+ends a sentence.  If the input were:
 .VS
         I calc'd the approx. Fermi
-        level to three sig. digits.
+        level to 3 sig. digits.
 .VE
 .LP
-The program has to decide whether to put 1 or 2 spaces
-between \*Qapprox.\*U and \*QFermi\*U. There is no obvious
-hint from the original paragraph because there was a line
-break between them, and \*QFermi\*U begins with a capital
-letter. The program would apparently have to understand
-English grammar to determine that the sentence does not
-end there (and then it would only work for English text).
+then
+.B par
+would refuse to put a line break between
+\*Qapprox.\*U and \*QFermi\*U in the output,
+mainly to avoid creating the first situation (in
+case the paragraph were to be fed back through
+.B par
+again).  This non-breaking space policy does come in handy
+for cases like \*QMr.\ Johnson\*U and \*QJan.\ 1\*U, though.
+.LP
+The
+.I guess
+feature only goes one way.
+.B par
+can preserve wide sentence breaks in a
+paragraph, or remove them, but it can't insert
+them if they aren't already in the input.
 .LP
 If you use tabs, you probably won't like the way
 .B par
-handles
-(or doesn't handle) them. It turns them into spaces. I
-didn't bother trying to make sense of tabs because they
-don't make sense to begin with. Not everyone's terminal
-has the same tab settings, so text files containing
-tabs are sometimes mangled. In fact, almost every text
+handles (or doesn't handle) them.  It turns them into
+spaces.  I didn't bother trying to make sense of tabs
+because they don't make sense to begin with.  Not everyone's
+terminal has the same tab settings, so text files containing
+tabs are sometimes mangled.  In fact, almost every text
 file containing tabs gets mangled when something is
 inserted at the beginning of each line (when quoting
 e-mail or commenting out a section of a shell script, for
-example), making them a pain to edit. In my opinion, the
+example), making them a pain to edit.  In my opinion, the
 world would be a nicer place if everyone stopped using
 tabs (so I'm doing my part by not supporting them in
 .BR par .)
+(Thanks to ets1@cs.wustl.edu (Eric T. Stuebe)
+for showing me the light about tabs.)
 .LP
 There is currently no way for the length of the
 output prefix to differ from the length of the
-input prefix. Ditto for the suffix. I may consider
+input prefix.  Ditto for the suffix.  I may consider
 adding this capability in a future release, but
 right now I'm not sure how I'd want it to work.
 .SH BUGS
 .LP
-If I knew of any bugs, I wouldn't release the package. Of
+If I knew of any bugs, I wouldn't release the package.  Of
 course, there may be bugs that I haven't yet discovered.
 .LP
-If you find any bugs, or if you have
+If you find any bugs (in the program or
+in the documentation), or if you have
 any suggestions, please send e-mail to:
 .RS
 .LP

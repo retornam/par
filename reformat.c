@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.20      */
+/* for Par 1.30      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -34,23 +34,68 @@ struct word {
               *nextline;  /*   Pointer to first word in next line. */
   int score,              /*   Value of the objective function.    */
       length;             /* Length of this word.                  */
+  short flags;            /* Notable properties of this word.      */
 };
+
+/* The following may be bitwise-OR'd together */
+/* to set the flags field of a struct word:   */
+
+const short W_SHIFTED = 1,  /* This word should have an extra space before */
+                            /* it unless it's the first word in the line.  */
+            W_CURIOUS = 2,  /* This is a curious word (see par.doc).       */
+            W_CAPITAL = 4;  /* This is a capitalized word (see par.doc).   */
+
+#define isshifted(w) ((w)->flags & 1)
+#define iscurious(w) (((w)->flags & 2) >> 1)
+#define iscapital(w) (((w)->flags & 4) >> 2)
 
 const char * const impossibility =
   "Impossibility #%d has occurred. Please report it.\n";
 
 
+static int checkcapital(struct word *w)
+/* Returns 1 if *w is capitalized according   */
+/* to the definition in par.doc, or 0 if not. */
+{
+  const char *p, *end;
+
+  for (p = w->chrs, end = p + w->length;  p < end && !isalnum(*p);  ++p);
+  return p < end && !islower(*p);
+}
+
+
+static int checkcurious(struct word *w)
+/* Returns 1 if *w is curious according to */
+/* the definition in par.doc, or 0 if not. */
+{
+  const char *start, *p;
+  char ch;
+
+  for (start = w->chrs, p = start + w->length;  p > start;  --p) {
+    ch = p[-1];
+    if (isalnum(ch)) return 0;
+    if (ch == '.' || ch == '?' || ch == '!' || ch == ':') break;
+  }
+
+  if (p <= start + 1) return 0;
+
+  --p;
+  do if (isalnum(*--p)) return 1;
+  while (p > start);
+
+  return 0;
+}
+
+
 static int simplebreaks(struct word *head, struct word *tail, int L, int last)
 
-/* Chooses line breaks in a list of struct words which  */
-/* maximize the length of the shortest line. L is the   */
-/* maximum line length. The last line counts as a line  */
-/* only if last is non-zero. head must point to a dummy */
-/* word, and tail must point to the last word, whose    */
-/* next field must be NULL. Returns the length of the   */
-/* shortest line on success, -1 if there is a word of   */
-/* length greater than L, or L if there are no lines.   */
-
+/* Chooses line breaks in a list of struct words which maximize the   */
+/* length of the shortest line.  L is the maximum line length.  The   */
+/* last line counts as a line only if last is non-zero. _head must    */
+/* point to a dummy word, and tail must point to the last word, whose */
+/* next field must be NULL.  Returns the length of the shortest line  */
+/* on success, -1 if there is a word of length greater than L, or L   */
+/* if there are no lines.                                             */
 {
   struct word *w1, *w2;
   int linelen, score;
@@ -59,7 +104,7 @@ static int simplebreaks(struct word *head, struct word *tail, int L, int last)
 
   for (w1 = tail, linelen = w1->length;
        w1 != head && linelen <= L;
-       w1 = w1->prev, linelen += 1 + w1->length) {
+       linelen += isshifted(w1), w1 = w1->prev, linelen += 1 + w1->length) {
     w1->score = last ? linelen : L;
     w1->nextline = NULL;
   }
@@ -68,7 +113,7 @@ static int simplebreaks(struct word *head, struct word *tail, int L, int last)
     w1->score = -1;
     for (linelen = w1->length,  w2 = w1->next;
          linelen <= L;
-         linelen += 1 + w2->length,  w2 = w2->next) {
+         linelen += 1 + isshifted(w2) + w2->length,  w2 = w2->next) {
       score = w2->score;
       if (linelen < score) score = linelen;
       if (score >= w1->score) {
@@ -85,10 +130,12 @@ static int simplebreaks(struct word *head, struct word *tail, int L, int last)
 static void normalbreaks(struct word *head, struct word *tail,
                          int L, int fit, int last, errmsg_t errmsg)
 
-/* Chooses line breaks in a list of struct words according to the  */
-/* policy in "par.doc" for <just> = 0 (L is <L>, fit is <fit>, and */
-/* last is <last>). head must point to a dummy word, and tail must */
-/* point to the last word, whose next field must be NULL.          */
+/* Chooses line breaks in a list of struct    */
+/* words according to the policy in "par.doc" */
+/* for <just> = 0 (L is <L>, fit is <fit>,    */
+/* and last is <last>).  head must point to   */
+/* a dummy word, and tail must point to the   */
+/* last word, whose next field must be NULL.  */
 {
   struct word *w1, *w2;
   int tryL, shortest, score, target, linelen, extra, minlen;
@@ -129,7 +176,7 @@ static void normalbreaks(struct word *head, struct word *tail,
     w1->score = -1;
     for (linelen = w1->length,  w2 = w1->next;
          linelen <= target;
-         linelen += 1 + w2->length,  w2 = w2->next) {
+         linelen += 1 + isshifted(w2) + w2->length,  w2 = w2->next) {
       extra = target - linelen;
       minlen = shortest;
       if (w2)
@@ -160,7 +207,7 @@ static void justbreaks(
 )
 /* Chooses line breaks in a list of struct words according     */
 /* to the policy in "par.doc" for <just> = 1 (L is <L> and     */
-/* last is <last>). head must point to a dummy word, and tail  */
+/* last is <last>).  head must point to a dummy word, and tail */
 /* must point to the last word, whose next field must be NULL. */
 {
   struct word *w1, *w2;
@@ -176,7 +223,7 @@ static void justbreaks(
     w1->score = L;
     for (numgaps = 0, extra = L - w1->length, w2 = w1->next;
          extra >= 0;
-         ++numgaps, extra -= 1 + w2->length, w2 = w2->next) {
+         ++numgaps, extra -= 1 + isshifted(w2) + w2->length, w2 = w2->next) {
       gap = numgaps ? (extra + numgaps - 1) / numgaps : L;
       if (w2)
         score = w2->score;
@@ -208,7 +255,7 @@ static void justbreaks(
     w1->score = -1;
     for (numgaps = 0, extra = L - w1->length, w2 = w1->next;
          extra >= 0;
-         ++numgaps, extra -= 1 + w2->length, w2 = w2->next) {
+         ++numgaps, extra -= 1 + isshifted(w2) + w2->length, w2 = w2->next) {
       gap = numgaps ? (extra + numgaps - 1) / numgaps : L;
       if (w2)
         score = w2->score;
@@ -225,7 +272,7 @@ static void justbreaks(
         score += (extra / numgaps) * (extra + numbiggaps) + numbiggaps;
         /* The above may not look like the sum of the squares of the numbers */
         /* of extra spaces required in each inter-word gap, but trust me, it */
-        /* is. It's easier to prove graphically than algebraicly.            */
+        /* is.  It's easier to prove graphically than algebraicly.           */
         if (w1->score < 0  ||  score <= w1->score) {
           w1->nextline = w2;
           w1->score = score;
@@ -243,11 +290,11 @@ static void justbreaks(
 
 char **reformat(
   const char * const *inlines, const char * const *endline,
-  int hang, int prefix, int suffix, int width, int fit,
-  int just, int last, int touch, errmsg_t errmsg
+  int hang, int prefix, int suffix, int width, int fit, int guess,
+  int just, int last, int Report, int touch, errmsg_t errmsg
 )
 {
-  int numin, numout, affix, L, linelen, numgaps, extra, phase;
+  int numin, affix, L, onfirstword = 1, linelen, numout, numgaps, extra, phase;
   const char * const *line, **suffixes = NULL, **suf, *end, *p1, *p2;
   char *q1, *q2, **outlines = NULL;
   struct word dummy, *head, *tail, *w1, *w2;
@@ -257,6 +304,7 @@ char **reformat(
 
   *errmsg = '\0';
   dummy.next = dummy.prev = NULL;
+  dummy.flags = 0;
   head = tail = &dummy;
   numin = endline - inlines;
 
@@ -275,7 +323,7 @@ char **reformat(
   affix = prefix + suffix;
   L = width - prefix - suffix;
 
-  for (line = inlines, suf = suffixes;  line != endline;  ++line, ++suf) {
+  for (line = inlines, suf = suffixes;  line < endline;  ++line, ++suf) {
     for (end = *line;  *end;  ++end);
     if (end - *line < affix) {
       sprintf(errmsg,
@@ -290,8 +338,11 @@ char **reformat(
       while (p1 < end && *p1 == ' ') ++p1;
       if (p1 == end) break;
       p2 = p1;
+      if (onfirstword) {
+        p1 = *line + prefix;
+        onfirstword = 0;
+      }
       while (p2 < end && *p2 != ' ') ++p2;
-      if (p2 - p1 > L) p2 = p1 + L;
       w1 = malloc(sizeof (struct word));
       if (!w1) {
         strcpy(errmsg,outofmem);
@@ -302,21 +353,75 @@ char **reformat(
       tail = tail->next = w1;
       w1->chrs = p1;
       w1->length = p2 - p1;
+      w1->flags = 0;
       p1 = p2;
     }
   }
 
-/* Expand first word if preceeded only by spaces: */
+/* If guess is 1, set flag values and merge words: */
 
-  w1 = head->next;
-  if (w1) {
-    p1 = *inlines + prefix;
-    for (p2 = p1;  *p2 == ' ';  ++p2);
-    if (w1->chrs == p2) {
-      w1->chrs = p1;
-      w1->length += p2 - p1;
+  if (guess) {
+    for (w1 = head, w2 = head->next;  w2;  w1 = w2, w2 = w2->next) {
+      if (checkcurious(w2)) w2->flags |= W_CURIOUS;
+      if (checkcapital(w2)) {
+        w2->flags |= W_CAPITAL;
+        if (iscurious(w1))
+          if (w1->chrs[w1->length] && w1->chrs + w1->length + 1 == w2->chrs) {
+            w2->length += w1->length + 1;
+            w2->chrs = w1->chrs;
+            w2->prev = w1->prev;
+            w2->prev->next = w2;
+            if (iscapital(w1)) w2->flags |= W_CAPITAL;
+            else w2->flags &= ~W_CAPITAL;
+            if (isshifted(w1)) w2->flags |= W_SHIFTED;
+            else w2->flags &= ~W_SHIFTED;
+            free(w1);
+          }
+          else
+            w2->flags |= W_SHIFTED;
+      }
     }
+    tail = w1;
   }
+
+/* Check for too-long words: */
+
+  if (Report)
+    for (w2 = head->next;  w2;  w2 = w2->next) {
+      if (w2->length > L) {
+        linelen = w2->length;
+        if (linelen > errmsg_size - 17)
+          linelen = errmsg_size - 17;
+        sprintf(errmsg, "Word too long: %.*s\n", linelen, w2->chrs);
+        goto rfcleanup;
+      }
+    }
+  else
+    for (w2 = head->next;  w2;  w2 = w2->next)
+      while (w2->length > L) {
+        w1 = malloc(sizeof (struct word));
+        if (!w1) {
+          strcpy(errmsg,outofmem);
+          goto rfcleanup;
+        }
+        w1->next = w2;
+        w1->prev = w2->prev;
+        w1->prev->next = w1;
+        w2->prev = w1;
+        w1->chrs = w2->chrs;
+        w2->chrs += L;
+        w1->length = L;
+        w2->length -= L;
+        w1->flags = 0;
+        if (iscapital(w2)) {
+          w1->flags |= W_CAPITAL;
+          w2->flags &= ~W_CAPITAL;
+        }
+        if (isshifted(w2)) {
+          w1->flags |= W_SHIFTED;
+          w2->flags &= ~W_SHIFTED;
+        }
+      }
 
 /* Choose line breaks according to policy in "par.doc": */
 
@@ -324,7 +429,7 @@ char **reformat(
   else normalbreaks(head,tail,L,fit,last,errmsg);
   if (*errmsg) goto rfcleanup;
 
-/* If touch is non-zero, change L to be the length of the longest line: */
+/* Change L to the length of the longest line if required: */
 
   if (!just && touch) {
     L = 0;
@@ -332,7 +437,7 @@ char **reformat(
     while (w1) {
       for (linelen = w1->length, w2 = w1->next;
            w2 != w1->nextline;
-           linelen += 1 + w2->length, w2 = w2->next);
+           linelen += 1 + isshifted(w2) + w2->length, w2 = w2->next);
       if (linelen > L) L = linelen;
       w1 = w2;
     }
@@ -349,7 +454,7 @@ char **reformat(
     if (w1)
       for (w2 = w1->next, numgaps = 0, extra = L - w1->length;
            w2 != w1->nextline;
-           ++numgaps, extra -= 1 + w2->length, w2 = w2->next);
+           ++numgaps, extra -= 1 + isshifted(w2) + w2->length, w2 = w2->next);
     linelen = suffix  ||  just && (w2 || last) ?
                 L + affix :
                 w1 ? prefix + L - extra : prefix;
@@ -368,7 +473,7 @@ char **reformat(
     q1 = q2;
     if (w1) {
       phase = numgaps / 2;
-      for (w2 = w1;  ; ) {
+      for (w2 = w1;  ;  ) {
         memcpy(q1, w2->chrs, w2->length);
         q1 += w2->length;
         w2 = w2->next;
@@ -381,6 +486,7 @@ char **reformat(
             phase -= numgaps;
           }
         }
+        if (isshifted(w2)) *q1++ = ' ';
       }
     }
     q2 += linelen - affix;

@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.20      */
+/* for Par 1.30      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -25,7 +25,7 @@
 
 
 const char * const progname = "par";
-const char * const versionnum = "1.20";
+const char * const versionnum = "1.30";
 
 struct charset {
   char *individuals;  /* Characters in this string are in the set.        */
@@ -37,17 +37,19 @@ struct charset {
 
 const short CS_UCASE = 1,  /* Includes all upper case letters. */
             CS_LCASE = 2,  /* Includes all lower case letters. */
-            CS_DIGIT = 4;  /* Includes all decimal digits.     */
+            CS_DIGIT = 4,  /* Includes all decimal digits.     */
+            CS_NUL   = 8;  /* Includes the NUL character.      */
 
 
 static int incharset(char c, struct charset cset)
 
 /* Returns 1 if c is in cset, 0 otherwise. */
 {
-  return     cset.individuals && strchr(cset.individuals, c)
+  return     c && cset.individuals && strchr(cset.individuals, c)
          ||  cset.flags & CS_UCASE && isupper(c)
          ||  cset.flags & CS_LCASE && islower(c)
          ||  cset.flags & CS_DIGIT && isdigit(c)
+         ||  cset.flags & CS_NUL   && !c
         ;
 }
 
@@ -68,10 +70,10 @@ static int digtoint(char c)
          c == '9' ? 9 :
          -1;
 
-  /* We can't simply return c - '0' because this is ANSI C code,  */
-  /* so it has to work for any character set, not just ones which */
-  /* put the digits together in order. Also, a lookup-table would */
-  /* be bad because there's no upper limit on CHAR_MAX.           */
+  /* We can't simply return c - '0' because this is ANSI C code, so */
+  /* it has to work for any character set, not just ones which put  */
+  /* the digits together in order.  Also, a lookup-table would be   */
+  /* bad because there's no upper limit on CHAR_MAX.                */
 }
 
 
@@ -92,12 +94,11 @@ static int hexdigtoint(char c)
 
 static int strtoudec(const char *s, int *pn)
 
-/* Converts the longest prefix of string s consisting  */
-/* of decimal digits to an integer, which is stored in */
-/* *pn. Normally returns 1. If *s is not a digit, then */
-/* *pn is not changed, but 1 is still returned. If the */
-/* integer represented is greater than 9999, then *pn  */
-/* is not changed and 0 is returned.                   */
+/* Converts the longest prefix of string s consisting of decimal   */
+/* digits to an integer, which is stored in *pn.  Normally returns */
+/* 1.  If *s is not a digit, then *pn is not changed, but 1 is     */
+/* still returned.  If the integer represented is greater than     */
+/* 9999, then *pn is not changed and 0 is returned.                */
 {
   int n = 0;
 
@@ -114,13 +115,14 @@ static int strtoudec(const char *s, int *pn)
 }
 
 
-static void parsearg(const char *arg, int *phang, int *pprefix, int *psuffix,
-                     int *pwidth, int *pdiv, int *pfit, int *pjust,
-                     int *plast, int *ptouch, int *pversion, errmsg_t errmsg)
-
-/* Parses the command line argument in arg, setting *phang, */
-/* *pprefix, *psuffix, *pwidth, *pdiv, *pfit, *pjust,       */
-/* *plast, *ptouch, and/or *pversion as appropriate.        */
+static void parsearg(
+  const char *arg, int *phang, int *pprefix, int *psuffix, int *pwidth,
+  int *pdiv, int *pfit, int *pguess, int *pjust, int *plast, int *pquote,
+  int *pReport, int *ptouch, int *pversion, errmsg_t errmsg
+)
+/* Parses the command line argument in arg, setting *phang, *pprefix, */
+/* *psuffix, *pwidth, *pdiv, *pfit, *pguess, *pjust, *plast, *pquote, */
+/* *pReport, *ptouch, and/or *pversion as appropriate.                */
 {
   const char *savearg = arg;
   char oc;
@@ -158,11 +160,14 @@ static void parsearg(const char *arg, int *phang, int *pprefix, int *psuffix,
     }
     else {
       if (n > 1) goto badarg;
-      if      (oc == 'd') *pdiv   = n;
-      else if (oc == 'f') *pfit   = n;
-      else if (oc == 'j') *pjust  = n;
-      else if (oc == 'l') *plast  = n;
-      else if (oc == 't') *ptouch = n;
+      if      (oc == 'd') *pdiv    = n;
+      else if (oc == 'f') *pfit    = n;
+      else if (oc == 'g') *pguess  = n;
+      else if (oc == 'j') *pjust   = n;
+      else if (oc == 'l') *plast   = n;
+      else if (oc == 'q') *pquote  = n;
+      else if (oc == 'R') *pReport = n;
+      else if (oc == 't') *ptouch  = n;
       else goto badarg;
     }
   }
@@ -170,30 +175,103 @@ static void parsearg(const char *arg, int *phang, int *pprefix, int *psuffix,
   return;
 
 badarg:
-  sprintf(errmsg, "Bad argument: %.*s\n", (int) errmsg_size - 16, savearg);
+  sprintf(errmsg, "Bad argument: %.*s\n", errmsg_size - 16, savearg);
 }
 
 
-static char **readlines(errmsg_t errmsg)
-
-/* Reads lines from stdin until EOF, or until a blank line is encountered,   */
-/* in which case the newline is pushed back onto the input stream. Returns a */
-/* NULL-terminated array of pointers to individual lines, stripped of their  */
-/* newline characters. Every white character is changed to a space unless it */
-/* is a newline. Returns NULL on failure.                                    */
+static struct charset getcharset(
+  const char *varname, const char *defaultval, errmsg_t errmsg
+)
+/* Returns the set of characters defined by the environment variable named */
+/* *varname, according to the syntax for PARBODY described in par.doc.     */
+/* If *varname is not defined, the value *defaultval is used instead.      */
+/* On failure, the individuals field of the return value will be NULL.     */
 {
-  struct buffer *cbuf = NULL, *pbuf = NULL;
-  int c, blank;
-  char ch, *ln, *nullline = NULL, nullchar = '\0', **lines = NULL;
+  const char *val, *p;
+  struct buffer *cbuf = NULL;
+  char ch;
+  struct charset cs = { NULL, 0 };
+
+  val = getenv(varname);
+  if (!val) val = defaultval;
+
+  cbuf = newbuffer(sizeof (char), errmsg);
+  if (*errmsg) goto gcscleanup;
+  for (p = val;  *p;  ++p)
+    if (*p == '_') {
+      ++p;
+      if (*p == '_' || *p == 's' || *p == 'x') {
+        if      (*p == '_') ch = '_';
+        else if (*p == 's') ch = ' ';
+        else /* *p == 'x' */ {
+          if (!isxdigit(p[1]) || !isxdigit(p[2])) goto gcsbadval;
+          ch = 16 * hexdigtoint(p[1]) + hexdigtoint(p[2]);
+          p += 2;
+        }
+        if (ch) {
+          additem(cbuf, &ch, errmsg);
+          if (*errmsg) goto gcscleanup;
+        }
+        else
+          cs.flags |= CS_NUL;
+      }
+      else {
+        if      (*p == 'A') cs.flags |= CS_UCASE;
+        else if (*p == 'a') cs.flags |= CS_LCASE;
+        else if (*p == '0') cs.flags |= CS_DIGIT;
+        else goto gcsbadval;
+      }
+    }
+    else {
+      additem(cbuf,p,errmsg);
+      if (*errmsg) goto gcscleanup;
+    }
+  ch = '\0';
+  additem(cbuf, &ch, errmsg);
+  if (*errmsg) goto gcscleanup;
+  cs.individuals = copyitems(cbuf,errmsg);
+
+gcscleanup:
+
+  if (cbuf) freebuffer(cbuf);
+  return cs;
+
+gcsbadval:
+
+  sprintf(errmsg, "Bad %s: %.*s\n", varname,
+          errmsg_size - 8 - strlen(varname), val);
+  goto gcscleanup;
+}
+
+
+static char **readlines(struct charset protectchars,
+                        struct charset quotechars, int quote, errmsg_t errmsg)
+
+/* Reads lines from stdin until EOF, or until a line beginning with a */
+/* protective character is encountered (in which case the protective  */
+/* character is pushed back onto the input stream), or until a blank  */
+/* line is encountered (in which case the newline is pushed back onto */
+/* the input stream).  Returns a NULL-terminated array of pointers to */
+/* individual lines, stripped of their newline characters.  Every NUL */
+/* character is stripped, and every white character is changed to a   */
+/* space unless it is a newline.  If quote is 1, vacant lines will be */
+/* inserted as described for the q option in par.doc.  Returns NULL   */
+/* on failure.                                                        */
+{
+  struct buffer *cbuf = NULL, *lbuf = NULL;
+  int c, empty, blank, nonquote, oldnonquote = 0, qplen;
+  char ch, *ln = NULL, nullchar = '\0', *nullline = NULL, *qpstart, *qpend,
+       *oldqpstart = &nullchar, *oldqpend = &nullchar, *p, *op, *vln = NULL,
+       **lines = NULL;
 
   *errmsg = '\0';
 
   cbuf = newbuffer(sizeof (char), errmsg);
   if (*errmsg) goto rlcleanup;
-  pbuf = newbuffer(sizeof (char *), errmsg);
+  lbuf = newbuffer(sizeof (char *), errmsg);
   if (*errmsg) goto rlcleanup;
 
-  for (blank = 1;  ; ) {
+  for (empty = blank = 1;  ; ) {
     c = getchar();
     if (c == EOF) break;
     if (c == '\n') {
@@ -205,12 +283,49 @@ static char **readlines(errmsg_t errmsg)
       if (*errmsg) goto rlcleanup;
       ln = copyitems(cbuf,errmsg);
       if (*errmsg) goto rlcleanup;
-      additem(pbuf, &ln, errmsg);
+      if (quote) {
+        qpstart = ln;
+        for (qpend = qpstart;
+             *qpend && incharset(*qpend, quotechars);
+             ++qpend);
+        nonquote = *qpend != '\0';
+        while (qpend > qpstart && qpend[-1] == ' ') --qpend;
+        for (p = qpstart, op = oldqpstart;
+             p < qpend && op < oldqpend && *p == *op;
+             ++p, ++op);
+        if (   (p < qpend && op == oldqpend  ||  p == qpend && op < oldqpend)
+            && nonquote && oldnonquote) {
+          qplen = p - qpstart;
+          vln = malloc((qplen + 1) * sizeof (char));
+          if (!vln) {
+            strcpy(errmsg,outofmem);
+            goto rlcleanup;
+          }
+          strncpy(vln,qpstart,qplen);
+          vln[qplen] = '\0';
+          additem(lbuf, &vln, errmsg);
+          if (*errmsg) goto rlcleanup;
+          vln = NULL;
+        }
+        oldqpstart = qpstart;
+        oldqpend = qpend;
+        oldnonquote = nonquote;
+      }
+      additem(lbuf, &ln, errmsg);
       if (*errmsg) goto rlcleanup;
+      ln = NULL;
       clearbuffer(cbuf);
-      blank = 1;
+      empty = blank = 1;
     }
     else {
+      if (empty) {
+        if (incharset((char) c,protectchars)) {
+          ungetc(c,stdin);
+          break;
+        }
+        empty = 0;
+      }
+      if (!c) continue;
       if (isspace(c)) c = ' ';
       else blank = 0;
       ch = c;
@@ -224,26 +339,29 @@ static char **readlines(errmsg_t errmsg)
     if (*errmsg) goto rlcleanup;
     ln = copyitems(cbuf,errmsg);
     if (*errmsg) goto rlcleanup;
-    additem(pbuf, &ln, errmsg);
+    additem(lbuf, &ln, errmsg);
     if (*errmsg) goto rlcleanup;
+    ln = NULL;
   }
 
-  additem(pbuf, &nullline, errmsg);
+  additem(lbuf, &nullline, errmsg);
   if (*errmsg) goto rlcleanup;
-  lines = copyitems(pbuf,errmsg);
+  lines = copyitems(lbuf,errmsg);
 
 rlcleanup:
 
   if (cbuf) freebuffer(cbuf);
-  if (pbuf) {
+  if (lbuf) {
     if (!lines)
       for (;;) {
-        lines = nextitem(pbuf);
+        lines = nextitem(lbuf);
         if (!lines) break;
         free(*lines);
       }
-    freebuffer(pbuf);
+    freebuffer(lbuf);
   }
+  if (ln) free(ln);
+  if (vln) free(vln);
 
   return lines;
 }
@@ -253,16 +371,16 @@ static void compresuflen(
   const char * const *lines, const char * const *endline,
   struct charset bodychars, int pre, int suf, int *ppre, int *psuf
 )
-/* lines is an array of strings, up to but not including endline. */
-/* Writes into *ppre and *psuf the comprelen and comsuflen of the */
-/* lines in lines. Assumes that they have already been determined */
-/* to be at least pre and suf. endline must not equal lines.      */
+/* lines is an array of strings, up to but not including endline.  */
+/* Writes into *ppre and *psuf the comprelen and comsuflen of the  */
+/* lines in lines.  Assumes that they have already been determined */
+/* to be at least pre and suf. endline must not equal lines.       */
 {
   const char *start, *end, * const *line, *p1, *p2, *start2;
 
   start = *lines;
   for (end = start + pre;  *end && !incharset(*end, bodychars);  ++end);
-  for (line = lines + 1;  line != endline;  ++line) {
+  for (line = lines + 1;  line < endline;  ++line) {
     for (p1 = start + pre, p2 = *line + pre;
          p1 < end && *p1 == *p2;
          ++p1, ++p2);
@@ -275,7 +393,7 @@ static void compresuflen(
   for (start = end - suf;
        start > start2 && !incharset(start[-1], bodychars);
        --start);
-  for (line = lines + 1;  line != endline;  ++line) {
+  for (line = lines + 1;  line < endline;  ++line) {
     start2 = *line + *ppre;
     for (p2 = start2;  *p2;  ++p2);
     for (p1 = end - suf, p2 -= suf;
@@ -292,14 +410,14 @@ static void delimit(
   const char * const *lines, const char * const *endline,
   struct charset bodychars, int div, int pre, int suf, char *tags
 )
-/* lines is an array of strings, up to but not including endline.    */
-/* Sets each character in the parallel array tags to 'f', 'p', or    */
-/* 'v' according to whether the corresponding line in lines is the   */
-/* first line of a paragraph, some other line in a paragraph, or a   */
-/* vacant line, respectively, depending on the values of bodychars   */
-/* and div, according to "par.doc". It is assumed that the comprelen */
-/* and comsuflen of the lines in lines have already been determined  */
-/* to be at least pre and suf, respectively.                         */
+/* lines is an array of strings, up to but not including endline.     */
+/* Sets each character in the parallel array tags to 'f', 'p', or     */
+/* 'v' according to whether the corresponding line in lines is the    */
+/* first line of a paragraph, some other line in a paragraph, or a    */
+/* vacant line, respectively, depending on the values of bodychars    */
+/* and div, according to "par.doc".  It is assumed that the comprelen */
+/* and comsuflen of the lines in lines have already been determined   */
+/* to be at least pre and suf, respectively.                          */
 {
   const char * const *line, *end, *p, * const *nextline;
   char *tag, *nexttag;
@@ -328,7 +446,7 @@ static void delimit(
     if (*tag == 'v') anyvacant = 1;
     ++line;
     ++tag;
-  } while (line != endline);
+  } while (line < endline);
 
   if (anyvacant) {
     line = lines;
@@ -341,14 +459,14 @@ static void delimit(
       }
 
       for (nextline = line + 1, nexttag = tag + 1;
-           nextline != endline && *nexttag == 'p';
+           nextline < endline && *nexttag == 'p';
            ++nextline, ++nexttag);
 
       delimit(line,nextline,bodychars,div,pre,suf,tag);
 
       line = nextline;
       tag = nexttag;
-    } while (line != endline);
+    } while (line < endline);
 
     return;
   }
@@ -366,30 +484,38 @@ static void delimit(
       *tag = 'f';
     ++line;
     ++tag;
-  } while (line != endline);
+  } while (line < endline);
 }
 
 
 static void setaffixes(
   const char * const *inlines, const char * const *endline,
-  struct charset bodychars, int hang, int *pprefix, int *psuffix
+  struct charset bodychars, struct charset quotechars,
+  int hang, int quote, int *pprefix, int *psuffix
 )
-/* inlines is an array of strings, up to but not including endline. If */
-/* either of *pprefix, *psuffix is less than 0, sets it to a default   */
-/* value based on inlines and bodychars, according to "par.doc".       */
+/* inlines is an array of strings, up to but not including   */
+/* endline.  If either of *pprefix, *psuffix is less than 0, */
+/* sets it to a default value based on inlines, bodychars,   */
+/* quotechars, hang, and quote, according to "par.doc".      */
 {
   int numin, pre, suf;
+  const char *start, *p;
 
   numin = endline - inlines;
 
-  if ((*pprefix < 0 || *psuffix < 0) && numin >= hang + 2)
+  if ((*pprefix < 0 || *psuffix < 0) && numin > hang + 1)
     compresuflen(inlines + hang, endline, bodychars, 0, 0, &pre, &suf);
 
   if (*pprefix < 0)
-    *pprefix = numin < hang + 2  ?  0  :  pre;
+    if (quote && numin == hang + 1) {
+      start = inlines[hang];
+      for (p = start;  *p && incharset(*p, quotechars);  ++p);
+      *pprefix = p - start;
+    }
+    else *pprefix = numin > hang + 1  ?  pre  :  0;
 
   if (*psuffix < 0)
-    *psuffix = numin < hang + 2  ?  0  :  suf;
+    *psuffix = numin > hang + 1  ?  suf  :  0;
 }
 
 
@@ -409,13 +535,14 @@ static void freelines(char **lines)
 main(int argc, const char * const *argv)
 {
   int hang = 0, prefix = -1, suffix = -1, width = 72, div = 0, fit = 0,
-      just = 0, last = 0, touch = -1, version = 0, prefixbak, suffixbak, c;
-  char *parinit, *picopy = NULL, *parbody, *arg, ch, **inlines = NULL,
-       **endline, *tags = NULL, **firstline, *firsttag, *end, **nextline,
-       *nexttag, **outlines = NULL, **line;
+      guess = 0, just = 0, last = 0, quote = 0, Report = 0, touch = -1,
+      version = 0, prefixbak, suffixbak, c;
+  char *parinit, *picopy = NULL, *arg, **inlines = NULL, **endline,
+       *tags = NULL, **firstline, *firsttag, *end, **nextline, *nexttag,
+       **outlines = NULL, **line;
   const char * const whitechars = " \f\n\r\t\v";
-  struct charset bodychars = { NULL, 0 };
-  struct buffer *cbuf = NULL;
+  struct charset bodychars = { NULL, 0 }, protectchars = { NULL, 0 },
+                 quotechars = { NULL, 0 };
   errmsg_t errmsg = { '\0' };
 
 /* Process PARINIT environment variable: */
@@ -430,8 +557,8 @@ main(int argc, const char * const *argv)
     strcpy(picopy,parinit);
     arg = strtok(picopy,whitechars);
     while (arg) {
-      parsearg(arg, &hang, &prefix, &suffix, &width, &div,
-               &fit, &just, &last, &touch, &version, errmsg);
+      parsearg(arg, &hang, &prefix, &suffix, &width, &div, &fit, &guess,
+               &just, &last, &quote, &Report, &touch, &version, errmsg);
       if (*errmsg || version) goto parcleanup;
       arg = strtok(NULL,whitechars);
     }
@@ -442,8 +569,8 @@ main(int argc, const char * const *argv)
 /* Process command line arguments: */
 
   while (*++argv) {
-    parsearg(*argv, &hang, &prefix, &suffix, &width,
-             &div, &fit, &just, &last, &touch, &version, errmsg);
+    parsearg(*argv, &hang, &prefix, &suffix, &width, &div, &fit,
+             &guess, &just, &last, &quote, &Report, &touch, &version, errmsg);
     if (*errmsg || version) goto parcleanup;
   }
 
@@ -451,58 +578,34 @@ main(int argc, const char * const *argv)
   prefixbak = prefix;
   suffixbak = suffix;
 
-/* Process PARBODY environment variable: */
+/* Process other environment variables: */
 
-  parbody = getenv("PARBODY");
-  if (parbody) {
-    cbuf = newbuffer(sizeof (char), errmsg);
-    if (*errmsg) goto parcleanup;
-    for (arg = parbody;  *arg;  ++arg)
-      if (*arg == '_') {
-        ++arg;
-        if (*arg == '_' || *arg == 's' || *arg == 'x') {
-          if      (*arg == '_') ch = '_';
-          else if (*arg == 's') ch = ' ';
-          else /* *arg == 'x' */ {
-            if (!isxdigit(arg[1]) || !isxdigit(arg[2])) goto badparbody;
-            ch = 16 * hexdigtoint(arg[1]) + hexdigtoint(arg[2]);
-            arg += 2;
-          }
-          additem(cbuf, &ch, errmsg);
-          if (*errmsg) goto parcleanup;
-        }
-        else {
-          if      (*arg == 'A') bodychars.flags |= CS_UCASE;
-          else if (*arg == 'a') bodychars.flags |= CS_LCASE;
-          else if (*arg == '0') bodychars.flags |= CS_DIGIT;
-          else goto badparbody;
-        }
-      }
-      else {
-        additem(cbuf,arg,errmsg);
-        if (*errmsg) goto parcleanup;
-      }
-    ch = '\0';
-    additem(cbuf, &ch, errmsg);
-    if (*errmsg) goto parcleanup;
-    bodychars.individuals = copyitems(cbuf,errmsg);
-    if (*errmsg) goto parcleanup;
-    freebuffer(cbuf);
-    cbuf = NULL;
-  }
+  bodychars = getcharset("PARBODY", "", errmsg);
+  if (*errmsg) goto parcleanup;
+
+  protectchars = getcharset("PARPROTECT", "", errmsg);
+  if (*errmsg) goto parcleanup;
+
+  quotechars = getcharset("PARQUOTE", "> ", errmsg);
+  if (*errmsg) goto parcleanup;
 
 /* Main loop: */
 
   for (;;) {
     for (;;) {
       c = getchar();
+      if (incharset((char) c, protectchars))
+        while (c != '\n' && c != EOF) {
+          putchar(c);
+          c = getchar();
+        }
       if (c != '\n') break;
       putchar(c);
     }
     if (c == EOF) break;
     ungetc(c,stdin);
 
-    inlines = readlines(errmsg);
+    inlines = readlines(protectchars,quotechars,quote,errmsg);
     if (*errmsg) goto parcleanup;
 
     for (endline = inlines;  *endline;  ++endline);
@@ -535,14 +638,14 @@ main(int argc, const char * const *argv)
       }
 
       for (nexttag = firsttag + 1, nextline = firstline + 1;
-           firstline != endline && *nexttag == 'p';
+           nextline < endline && *nexttag == 'p';
            ++nexttag, ++nextline);
 
       prefix = prefixbak;
       suffix = suffixbak;
       setaffixes((const char * const *) firstline,
                  (const char * const *) nextline,
-                 bodychars, hang, &prefix, &suffix);
+                 bodychars, quotechars, hang, quote, &prefix, &suffix);
       if (width <= prefix + suffix) {
         sprintf(errmsg,
                 "<width> (%d) <= <prefix> (%d) + <suffix> (%d)\n",
@@ -552,8 +655,8 @@ main(int argc, const char * const *argv)
 
       outlines =
         reformat((const char * const *) firstline,
-                 (const char * const *) nextline, hang,
-                 prefix, suffix, width, fit, just, last, touch, errmsg);
+                 (const char * const *) nextline, hang, prefix, suffix,
+                  width, fit, guess, just, last, Report, touch, errmsg);
       if (*errmsg) goto parcleanup;
 
       for (line = outlines;  *line;  ++line)
@@ -564,7 +667,7 @@ main(int argc, const char * const *argv)
 
       firsttag = nexttag;
       firstline = nextline;
-    } while (firstline != endline);
+    } while (firstline < endline);
 
     free(tags);
     tags = NULL;
@@ -576,23 +679,19 @@ main(int argc, const char * const *argv)
 parcleanup:
 
   if (picopy) free(picopy);
-  if (cbuf) freebuffer(cbuf);
   if (bodychars.individuals) free(bodychars.individuals);
+  if (protectchars.individuals) free(protectchars.individuals);
+  if (quotechars.individuals) free(quotechars.individuals);
   if (inlines) freelines(inlines);
   if (tags) free(tags);
   if (outlines) freelines(outlines);
 
   if (*errmsg) {
-    printf("%s error:\n%.*s", progname, (int) errmsg_size, errmsg);
+    printf("%s error:\n%.*s", progname, errmsg_size, errmsg);
     exit(EXIT_FAILURE);
   }
 
   if (version) printf("%s %s\n", progname, versionnum);
 
   exit(EXIT_SUCCESS);
-
-badparbody:
-
-  sprintf(errmsg, "Bad PARBODY: %.*s\n", (int) errmsg_size - 15, parbody);
-  goto parcleanup;
 }

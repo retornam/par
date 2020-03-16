@@ -1,6 +1,6 @@
 /*********************/
 /* errmsg.h          */
-/* for Par 1.20      */
+/* for Par 1.30      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -12,7 +12,13 @@
 #define ERRMSG_H
 
 
-#define errmsg_size 163  /* This will never decrease, but may increase. */
+#define errmsg_size 163
+
+/* This is the maximum number of characters that will fit  */
+/* in an errmsg_t, including the terminating '\0'. It will */
+/* never decrease, but may increase in future versions of  */
+/* this header file.                                       */
+
 
 typedef char errmsg_t[errmsg_size];
 

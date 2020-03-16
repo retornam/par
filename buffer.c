@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.c          */
-/* for Par 1.20      */
+/* for Par 1.30      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,10 +8,9 @@
 /* This is ANSI C code. */
 
 
-/* additem(), copyitems(), and nextitem() rely   */
-/* on the fact that sizeof (char) is 1. See      */
-/* section A7.4.8 of The C Programming Language, */
-/* Second Edition, by Kerninghan and Ritchie.    */
+/* additem(), copyitems(), and nextitem() rely on the fact that */
+/* sizeof (char) is 1.  See section A7.4.8 of The C Programming */
+/* Language, Second Edition, by Kerninghan and Ritchie.         */
 
 
 #include "buffer.h"  /* Makes sure we're consistent with the prototypes. */
