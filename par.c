@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.00      */
+/* for Par 1.10      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,8 +8,7 @@
 /* This is ANSI C code. */
 
 
-#include "errmsg.h"
-#include "buffer.h"    /* Also includes <stddef.h>. */
+#include "buffer.h"    /* Also includes <stddef.h> and "errmsg.h". */
 #include "reformat.h"
 
 #include <stdio.h>
@@ -22,13 +21,36 @@
 
 
 const char * const progname = "par";
-const char * const version = "1.00";
+const char * const versionnum = "1.10";
+
+struct charset {
+  char *individuals;  /* Characters in this string are in the set.        */
+  short flags;        /* Groups of characters can be included with flags. */
+};
+
+/* The following may be bitwise-OR'd together  */
+/* to set the flags field of a struct charset: */
+
+const short CS_UCASE = 1,  /* Includes all upper case letters. */
+            CS_LCASE = 2,  /* Includes all lower case letters. */
+            CS_DIGIT = 4;  /* Includes all decimal digits.     */
+
+
+static int incharset(char c, struct charset cset)
+
+/* Returns 1 if c is in cset, 0 otherwise. */
+{
+  return     cset.individuals && strchr(cset.individuals, c)
+         ||  cset.flags & CS_UCASE && isupper(c)
+         ||  cset.flags & CS_LCASE && islower(c)
+         ||  cset.flags & CS_DIGIT && isdigit(c)
+        ;
+}
 
 
 static int digtoint(char c)
 
-/* Returns the value represented by the digit c,   */
-/* or -1 if c is not a digit. Does not use errmsg. */
+/* Returns the value represented by the digit c, or -1 if c is not a digit. */
 {
   return c == '0' ? 0 :
          c == '1' ? 1 :
@@ -42,27 +64,45 @@ static int digtoint(char c)
          c == '9' ? 9 :
          -1;
 
-  /* We can't simply return c - '0' because this is ANSI  */
-  /* C code, so it has to work for any character set, not */
-  /* just ones which put the digits together in order.    */
+  /* We can't simply return c - '0' because this is ANSI C code,  */
+  /* so it has to work for any character set, not just ones which */
+  /* put the digits together in order. Also, a lookup-table would */
+  /* be bad because there's no upper limit on CHAR_MAX.           */
+}
+
+
+static int hexdigtoint(char c)
+
+/* Returns the value represented by the hexadecimal */
+/* digit c, or -1 if c is not a hexadecimal digit.  */
+{
+  return c == 'A' || c == 'a' ? 10 :
+         c == 'B' || c == 'b' ? 11 :
+         c == 'C' || c == 'c' ? 12 :
+         c == 'D' || c == 'd' ? 13 :
+         c == 'E' || c == 'e' ? 14 :
+         c == 'F' || c == 'f' ? 15 :
+         digtoint(c);
 }
 
 
 static int strtoudec(const char *s, int *pn)
 
-/* Puts the decimal value of the string s into *pn, returning */
-/* 1 on success. If s is empty, or contains non-digits,       */
-/* or represents an integer greater than 9999, then *pn       */
-/* is not changed and 0 is returned. Does not use errmsg.     */
+/* Converts the longest prefix of string s consisting  */
+/* of decimal digits to an integer, which is stored in */
+/* *pn. Normally returns 1. If *s is not a digit, then */
+/* *pn is not changed, but 1 is still returned. If the */
+/* integer represented is greater than 9999, then *pn  */
+/* is not changed and 0 is returned.                   */
 {
   int n = 0;
 
-  if (!*s) return 0;
+  if (!isdigit(*s)) return 1;
 
   do {
-    if (n >= 1000 || !isdigit(*s)) return 0;
+    if (n >= 1000) return 0;
     n = 10 * n + digtoint(*s);
-  } while (*++s);
+  } while (isdigit(*++s));
 
   *pn = n;
 
@@ -70,73 +110,82 @@ static int strtoudec(const char *s, int *pn)
 }
 
 
-static void parseopt(
-  const char *opt, int *pwidth, int *pprefix,
-  int *psuffix, int *phang, int *plast, int *pmin
-)
-/* Parses the single option in opt, setting *pwidth, *pprefix,     */
-/* *psuffix, *phang, *plast, or *pmin as appropriate. Uses errmsg. */
+static void parsearg(const char *arg, int *phang, int *pprefix,
+                     int *psuffix, int *pwidth, int *pfit, int *pjust,
+                     int *plast, int *ptouch, int *pversion, errmsg_t errmsg)
+
+/* Parses the command line argument in arg, setting    */
+/* *phang, *pprefix, *psuffix, *pwidth, *pfit, *pjust, */
+/* *plast, *ptouch, and/or *pversion as appropriate.   */
 {
-  const char *saveopt = opt;
+  const char *savearg = arg;
   char oc;
-  int n, r;
+  int n;
 
-  if (*opt == '-') ++opt;
+  *errmsg = '\0';
 
-  if (!strcmp(opt, "version")) {
-    sprintf(errmsg, "%s %s\n", progname, version);
+  if (*arg == '-') ++arg;
+
+  if (!strcmp(arg, "version")) {
+    *pversion = 1;
     return;
   }
 
-  oc = *opt;
-
-  if (isdigit(oc)) {
-    if (!strtoudec(opt, &n)) goto badopt;
+  if (isdigit(*arg)) {
+    if (!strtoudec(arg, &n)) goto badarg;
     if (n <= 8) *pprefix = n;
     else *pwidth = n;
   }
-  else {
-    if (!oc) goto badopt;
-    n = 1;
-    r = strtoudec(opt + 1, &n);
-    if (opt[1] && !r) goto badopt;
 
-    if (oc == 'w' || oc == 'p' || oc == 's') {
-      if (!r) goto badopt;
-      if      (oc == 'w') *pwidth  = n;
-      else if (oc == 'p') *pprefix = n;
-      else                *psuffix = n;
+  for (;;) {
+    while (isdigit(*arg)) ++arg;
+    oc = *arg;
+    if (!oc) break;
+    n = 1;
+    if (!strtoudec(++arg, &n)) goto badarg;
+    if (oc == 'h' || oc == 'p' || oc == 's' || oc == 'w') {
+      if (oc == 'h') *phang = n;
+      else {
+        if (!isdigit(*arg)) goto badarg;
+        if      (oc == 'w') *pwidth  = n;
+        else if (oc == 'p') *pprefix = n;
+        else  /*oc == 's'*/ *psuffix = n;
+      }
     }
-    else if (oc == 'h') *phang = n;
-    else if (n <= 1) {
-      if      (oc == 'l') *plast = n;
-      else if (oc == 'm') *pmin = n;
+    else {
+      if (n > 1) goto badarg;
+      if      (oc == 'f') *pfit   = n;
+      else if (oc == 'j') *pjust  = n;
+      else if (oc == 'l') *plast  = n;
+      else if (oc == 't') *ptouch = n;
+      else goto badarg;
     }
-    else goto badopt;
   }
 
-  *errmsg = '\0';
   return;
 
-badopt:
-  sprintf(errmsg, "Bad option: %.149s\n", saveopt);
+badarg:
+  sprintf(errmsg, "Bad argument: %.*s\n", errmsg_size - 16, savearg);
 }
 
 
-static char **readlines(void)
+static char **readlines(errmsg_t errmsg)
 
-/* Reads lines from stdin until EOF, or until a blank line is encountered, */
-/* in which case the newline is pushed back onto the input stream. Returns */
-/* a NULL-terminated array of pointers to individual lines, stripped of    */
-/* their newline characters. Uses errmsg, and returns NULL on failure.     */
+/* Reads lines from stdin until EOF, or until a blank line is encountered,   */
+/* in which case the newline is pushed back onto the input stream. Returns a */
+/* NULL-terminated array of pointers to individual lines, stripped of their  */
+/* newline characters. Every white character is changed to a space unless it */
+/* is a newline. Returns NULL on failure.                                    */
 {
   struct buffer *cbuf = NULL, *pbuf = NULL;
   int c, blank;
   char ch, *ln, *nullline = NULL, nullchar = '\0', **lines = NULL;
 
-  cbuf = newbuffer(sizeof (char));
+  *errmsg = '\0';
+
+  cbuf = newbuffer(sizeof (char), errmsg);
   if (*errmsg) goto rlcleanup;
-  pbuf = newbuffer(sizeof (char *));
+  pbuf = newbuffer(sizeof (char *), errmsg);
   if (*errmsg) goto rlcleanup;
 
   for (blank = 1;  ; ) {
@@ -147,35 +196,36 @@ static char **readlines(void)
         ungetc(c,stdin);
         break;
       }
-      additem(cbuf, &nullchar);
+      additem(cbuf, &nullchar, errmsg);
       if (*errmsg) goto rlcleanup;
-      ln = copyitems(cbuf);
+      ln = copyitems(cbuf,errmsg);
       if (*errmsg) goto rlcleanup;
-      additem(pbuf, &ln);
+      additem(pbuf, &ln, errmsg);
       if (*errmsg) goto rlcleanup;
       clearbuffer(cbuf);
       blank = 1;
     }
     else {
-      if (!isspace(c)) blank = 0;
+      if (isspace(c)) c = ' ';
+      else blank = 0;
       ch = c;
-      additem(cbuf, &ch);
+      additem(cbuf, &ch, errmsg);
       if (*errmsg) goto rlcleanup;
     }
   }
 
   if (!blank) {
-    additem(cbuf, &nullchar);
+    additem(cbuf, &nullchar, errmsg);
     if (*errmsg) goto rlcleanup;
-    ln = copyitems(cbuf);
+    ln = copyitems(cbuf,errmsg);
     if (*errmsg) goto rlcleanup;
-    additem(pbuf, &ln);
+    additem(pbuf, &ln, errmsg);
     if (*errmsg) goto rlcleanup;
   }
 
-  additem(pbuf, &nullline);
+  additem(pbuf, &nullline, errmsg);
   if (*errmsg) goto rlcleanup;
-  lines = copyitems(pbuf);
+  lines = copyitems(pbuf,errmsg);
 
 rlcleanup:
 
@@ -194,32 +244,26 @@ rlcleanup:
 }
 
 
-static void setdefaults(
-  const char * const *inlines, int *pwidth, int *pprefix,
-  int *psuffix, int *phang, int *plast, int *pmin
+static void setaffixes(
+  const char * const *inlines, struct charset bodychars,
+  int hang, int *pprefix, int *psuffix
 )
-/* If any of *pwidth, *pprefix, *psuffix, *phang, *plast, *pmin are     */
-/* less than 0, sets them to default values based on inlines, according */
-/* to "par.doc". Does not use errmsg because it always succeeds.        */
+/* If either of *pprefix, *psuffix is less than 0, sets it to a default */
+/* value based on inlines and bodychars, according to "par.doc".        */
 {
   int numlines;
   const char *start, *end, * const *line, *p1, *p2;
-
-  if (*pwidth < 0) *pwidth = 72;
-  if (*phang < 0) *phang = 0;
-  if (*plast < 0) *plast = 0;
-  if (*pmin < 0) *pmin = *plast;
 
   for (line = inlines;  *line;  ++line);
   numlines = line - inlines;
 
   if (*pprefix < 0)
-    if (numlines <= *phang + 1)
+    if (numlines <= hang + 1)
       *pprefix = 0;
     else {
-      start = inlines[*phang];
-      for (end = start;  *end;  ++end);
-      for (line = inlines + *phang + 1;  *line;  ++line) {
+      start = inlines[hang];
+      for (end = start;  *end && !incharset(*end, bodychars);  ++end);
+      for (line = inlines + hang + 1;  *line;  ++line) {
         for (p1 = start, p2 = *line;  p1 < end && *p1 == *p2;  ++p1, ++p2);
         end = p1;
       }
@@ -230,8 +274,10 @@ static void setdefaults(
     if (numlines <= 1)
       *psuffix = 0;
     else {
-      start = *inlines;
-      for (end = start;  *end;  ++end);
+      for (end = *inlines;  *end;  ++end);
+      for (start = end;
+           start > *inlines && !incharset(start[-1], bodychars);
+           --start);
       for (line = inlines + 1;  *line;  ++line) {
         for (p2 = *line;  *p2;  ++p2);
         for (p1 = end;
@@ -239,20 +285,20 @@ static void setdefaults(
              --p1, --p2);
         start = p1;
       }
-      while (end - start >= 2 && isspace(*start) && isspace(start[1])) ++start;
+      while (end - start >= 2 && *start == ' ' && start[1] == ' ') ++start;
       *psuffix = end - start;
     }
 }
 
 
 static void freelines(char **lines)
-/* Frees the strings pointed to in the NULL-terminated array lines, then */
-/* frees the array. Does not use errmsg because it always succeeds.      */
+/* Frees the elements of lines, and lines itself. */
+/* lines is a NULL-terminated array of strings.   */
 {
-  char *line;
+  char **line;
 
-  for (line = *lines;  *line;  ++line)
-    free(line);
+  for (line = lines;  *line;  ++line)
+    free(*line);
 
   free(lines);
 }
@@ -260,11 +306,16 @@ static void freelines(char **lines)
 
 main(int argc, const char * const *argv)
 {
-  int width, widthbak = -1, prefix, prefixbak = -1, suffix, suffixbak = -1,
-      hang, hangbak = -1, last, lastbak = -1, min, minbak = -1, c;
-  char *parinit, *picopy = NULL, *opt, **inlines = NULL, **outlines = NULL,
-       **line;
+  int hang = 0, prefix = -1, suffix = -1, width = 72, fit = 0, just = 0,
+      last = 0, touch = -1, version = 0, prefixbak, suffixbak, c;
+  char *parinit, *picopy = NULL, *parbody, *arg, **inlines = NULL,
+       **outlines = NULL, **line, ch;
   const char * const whitechars = " \f\n\r\t\v";
+  struct charset bodychars = { NULL, 0 };
+  struct buffer *cbuf = NULL;
+  errmsg_t errmsg = { '\0' };
+
+/* Process PARINIT environment variable: */
 
   parinit = getenv("PARINIT");
   if (parinit) {
@@ -274,22 +325,70 @@ main(int argc, const char * const *argv)
       goto parcleanup;
     }
     strcpy(picopy,parinit);
-    opt = strtok(picopy,whitechars);
-    while (opt) {
-      parseopt(opt, &widthbak, &prefixbak,
-               &suffixbak, &hangbak, &lastbak, &minbak);
-      if (*errmsg) goto parcleanup;
-      opt = strtok(NULL,whitechars);
+    arg = strtok(picopy,whitechars);
+    while (arg) {
+      parsearg(arg, &hang, &prefix, &suffix, &width,
+               &fit, &just, &last, &touch, &version, errmsg);
+      if (*errmsg || version) goto parcleanup;
+      arg = strtok(NULL,whitechars);
     }
     free(picopy);
     picopy = NULL;
   }
 
+/* Process command line arguments: */
+
   while (*++argv) {
-    parseopt(*argv, &widthbak, &prefixbak,
-             &suffixbak, &hangbak, &lastbak, &minbak);
-    if (*errmsg) goto parcleanup;
+    parsearg(*argv, &hang, &prefix, &suffix, &width,
+             &fit, &just, &last, &touch, &version, errmsg);
+    if (*errmsg || version) goto parcleanup;
   }
+
+  if (touch < 0) touch = fit || last;
+  prefixbak = prefix;
+  suffixbak = suffix;
+
+/* Process PARBODY environment variable: */
+
+  parbody = getenv("PARBODY");
+  if (parbody) {
+    cbuf = newbuffer(sizeof (char), errmsg);
+    if (*errmsg) goto parcleanup;
+    for (arg = parbody;  *arg;  ++arg)
+      if (*arg == '_') {
+        ++arg;
+        if (*arg == '_' || *arg == 's' || *arg == 'x') {
+          if      (*arg == '_') ch = '_';
+          else if (*arg == 's') ch = ' ';
+          else /* *arg == 'x' */ {
+            if (!isxdigit(arg[1]) || !isxdigit(arg[2])) goto badparbody;
+            ch = 16 * hexdigtoint(arg[1]) + hexdigtoint(arg[2]);
+            arg += 2;
+          }
+          additem(cbuf, &ch, errmsg);
+          if (*errmsg) goto parcleanup;
+        }
+        else {
+          if      (*arg == 'A') bodychars.flags |= CS_UCASE;
+          else if (*arg == 'a') bodychars.flags |= CS_LCASE;
+          else if (*arg == '0') bodychars.flags |= CS_DIGIT;
+          else goto badparbody;
+        }
+      }
+      else {
+        additem(cbuf,arg,errmsg);
+        if (*errmsg) goto parcleanup;
+      }
+    ch = '\0';
+    additem(cbuf, &ch, errmsg);
+    if (*errmsg) goto parcleanup;
+    bodychars.individuals = copyitems(cbuf,errmsg);
+    if (*errmsg) goto parcleanup;
+    freebuffer(cbuf);
+    cbuf = NULL;
+  }
+
+/* Main loop: */
 
   for (;;) {
     for (;;) {
@@ -300,7 +399,7 @@ main(int argc, const char * const *argv)
     if (c == EOF) break;
     ungetc(c,stdin);
 
-    inlines = readlines();
+    inlines = readlines(errmsg);
     if (*errmsg) goto parcleanup;
     if (!*inlines) {
       free(inlines);
@@ -308,13 +407,19 @@ main(int argc, const char * const *argv)
       continue;
     }
 
-    width = widthbak;  prefix = prefixbak;  suffix = suffixbak;
-    hang = hangbak;  last = lastbak;  min = minbak;
-    setdefaults((const char * const *) inlines,
-                &width, &prefix, &suffix, &hang, &last, &min);
+    prefix = prefixbak;
+    suffix = suffixbak;
+    setaffixes((const char * const *) inlines,
+               bodychars, hang, &prefix, &suffix);
+    if (width <= prefix + suffix) {
+      sprintf(errmsg,
+              "<width> (%d) <= <prefix> (%d) + <suffix> (%d)\n",
+              width, prefix, suffix);
+      goto parcleanup;
+    }
 
-    outlines = reformat((const char * const *) inlines,
-                        width, prefix, suffix, hang, last, min);
+    outlines = reformat((const char * const *) inlines, hang, prefix,
+                        suffix, width, fit, just, last, touch, errmsg);
     if (*errmsg) goto parcleanup;
 
     freelines(inlines);
@@ -330,13 +435,22 @@ main(int argc, const char * const *argv)
 parcleanup:
 
   if (picopy) free(picopy);
+  if (cbuf) freebuffer(cbuf);
+  if (bodychars.individuals) free(bodychars.individuals);
   if (inlines) freelines(inlines);
   if (outlines) freelines(outlines);
 
   if (*errmsg) {
-    printf("%.163s", errmsg);
+    printf("%s error:\n%.*s", progname, errmsg_size, errmsg);
     exit(EXIT_FAILURE);
   }
 
+  if (version) printf("%s %s\n", progname, versionnum);
+
   exit(EXIT_SUCCESS);
+
+badparbody:
+
+  sprintf(errmsg, "Bad PARBODY: %.*s\n", errmsg_size - 15, parbody);
+  goto parcleanup;
 }

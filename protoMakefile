@@ -1,6 +1,6 @@
 # *********************
 # * protoMakefile     *
-# * for Par 1.00      *
+# * for Par 1.10      *
 # * Copyright 1993 by *
 # * Adam M. Costello  *
 # *********************
@@ -9,6 +9,7 @@
 # Define CC so that the command
 # $(CC) foo.c
 # compiles the ANSI C source file "foo.c" into the object file "foo.o".
+# You may assume that foo.c uses no floating point math.
 #
 # Example (for Sun workstations):
 # CC = acc -c -O -s -Xc
@@ -19,6 +20,7 @@ CC =
 # $(LINK1) foo1.o foo2.o foo3.o $(LINK2) foo
 # links the object files "foo1.o", "foo2.o", "foo3.o"
 # into the executable file "foo".
+# You may assume that none of the .o files use floating point math.
 #
 # Example (for Sun workstations):
 # LINK1 = acc -s

@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.00      */
+/* for Par 1.10      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,10 +8,11 @@
 /* This is ANSI C code. */
 
 
-#include "reformat.h"  /* Makes sure we're consistent with the prototype. */
-#include "buffer.h"    /* Also includes <stddef.h>.                       */
-#include "errmsg.h"
+#include "reformat.h"  /* Makes sure we're consistent with the */
+                       /* prototype. Also includes "errmsg.h". */
+#include "buffer.h"    /* Also includes <stddef.h>.            */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
@@ -27,136 +28,220 @@ struct word {
               *next,      /* Pointer to next word.                 */
                           /* Supposing this word were the first... */
               *nextline;  /*   Pointer to first word in next line. */
-  int linelen,            /*   Length of the first line.           */
-      score,              /*   Value of objective function.        */
+  int score,              /*   Value of the objective function.    */
       length;             /* Length of this word.                  */
 };
 
+const char * const impossibility =
+  "Impossibility #%d has occurred. Please report it.\n";
 
-static int choosebreaks(
-  struct word *head, struct word *tail, int L, int last, int min
-)
-/* Chooses linebreaks in a list of struct words according to */
-/* the policy in "par.doc" (L is <L>, last is <last>, and    */
-/* min is <min>). head must point to a dummy word, and tail  */
-/* must point to the last word. Returns <newL>. Uses errmsg. */
+
+static int simplebreaks(struct word *head, struct word *tail, int L, int last)
+
+/* Chooses line breaks in a list of struct words which  */
+/* maximize the length of the shortest line. L is the   */
+/* maximum line length. The last line counts as a line  */
+/* only if last is non-zero. head must point to a dummy */
+/* word, and tail must point to the last word, whose    */
+/* next field must be NULL. Returns the length of the   */
+/* shortest line on success, -1 if there is a word of   */
+/* length greater than L, or L if there are no lines.   */
+
 {
   struct word *w1, *w2;
-  int linelen, shortest, newL, score, minlen, diff, sumsqdiff;
-  const char * const impossibility =
-    "Impossibility #%d has occurred. Please report it.\n";
+  int linelen, score;
 
-/* Determine maximum length of the shortest line: */
+  if (!head->next) return L;
 
-  /* Initialize words that could fit on the last line: */
-
-  for (w1 = tail,  linelen = w1->length;
+  for (w1 = tail, linelen = w1->length;
        w1 != head && linelen <= L;
-       w1 = w1->prev,  linelen += 1 + w1->length) {
-    w1->nextline = NULL;
+       w1 = w1->prev, linelen += 1 + w1->length) {
     w1->score = last ? linelen : L;
+    w1->nextline = NULL;
   }
-
-  /* Then choose line breaks: */
 
   for ( ;  w1 != head;  w1 = w1->prev) {
     w1->score = -1;
     for (linelen = w1->length,  w2 = w1->next;
          linelen <= L;
          linelen += 1 + w2->length,  w2 = w2->next) {
-      shortest = linelen <= w2->score ? linelen : w2->score;
-      if (shortest > w1->score) {
+      score = w2->score;
+      if (linelen < score) score = linelen;
+      if (score >= w1->score) {
         w1->nextline = w2;
-        w1->score = shortest;
+        w1->score = score;
       }
-    }
-    if (w1->score < 0) {
-      sprintf(errmsg,impossibility,1);
-      return 0;
     }
   }
 
-  shortest = head->next ? head->next->score : L;
+  return head->next->score;
+}
 
-  if (!min)
-    newL = L;
-  else {
 
-  /* Determine the minimum possible longest line: */
+static void normalbreaks(struct word *head, struct word *tail,
+                         int L, int fit, int last, errmsg_t errmsg)
 
-    for (w1 = tail;  w1 != head;  w1 = w1->prev) {
-      w1->score = L + 1;
-      for (linelen = w1->length, w2 = w1->next;
-           linelen < w1->score;
-           linelen += 1 + w2->length, w2 = w2->next) {
-        if (w2) {
-          score = w2->score;
-          minlen = shortest;
-        }
-        else {
-          score = 0;
-          minlen = last ? shortest : 0;
-        }
-        if (linelen >= minlen) {
-          newL = linelen >= score ? linelen : score;
-          if (newL < w1->score) {
-            w1->nextline = w2;
-            w1->score = newL;
-          }
-        }
-        if (!w2) break;
+/* Chooses line breaks in a list of struct words according to the  */
+/* policy in "par.doc" for <just> = 0 (L is <L>, fit is <fit>, and */
+/* last is <last>). head must point to a dummy word, and tail must */
+/* point to the last word, whose next field must be NULL.          */
+{
+  struct word *w1, *w2;
+  int tryL, shortest, score, target, linelen, extra, minlen;
+
+  *errmsg = '\0';
+  if (!head->next) return;
+
+  target = L;
+
+/* Determine minimum possible difference between  */
+/* the lengths of the shortest and longest lines: */
+
+  if (fit) {
+    score = L + 1;
+    for (tryL = L;  ;  --tryL) {
+      shortest = simplebreaks(head,tail,tryL,last);
+      if (shortest < 0) break;
+      if (tryL - shortest < score) {
+        target = tryL;
+        score = target - shortest;
       }
     }
+  }
 
-    newL = head->next ? head->next->score : 0;
-    if (newL > L) {
-      sprintf(errmsg,impossibility,2);
-      return 0;
-    }
+/* Determine maximum possible length of the shortest line: */
+
+  shortest = simplebreaks(head,tail,target,last);
+  if (shortest < 0) {
+    sprintf(errmsg,impossibility,1);
+    return;
   }
 
 /* Minimize the sum of the squares of the differences */
-/* between newL and the lengths of the lines:         */
+/* between target and the lengths of the lines:       */
 
-  for (w1 = tail;  w1 != head;  w1 = w1->prev) {
+  w1 = tail;
+  do {
     w1->score = -1;
     for (linelen = w1->length,  w2 = w1->next;
-         linelen <= newL;
+         linelen <= target;
          linelen += 1 + w2->length,  w2 = w2->next) {
-      diff = newL - linelen;
+      extra = target - linelen;
       minlen = shortest;
       if (w2)
         score = w2->score;
       else {
         score = 0;
-        if (!last) diff = minlen = 0;
+        if (!last) extra = minlen = 0;
       }
       if (linelen >= minlen  &&  score >= 0) {
-        sumsqdiff = score + diff * diff;
-        if (w1->score < 0  ||  sumsqdiff <= w1->score) {
+        score += extra * extra;
+        if (w1->score < 0  ||  score <= w1->score) {
           w1->nextline = w2;
-          w1->score = sumsqdiff;
-          w1->linelen = linelen;
+          w1->score = score;
         }
       }
       if (!w2) break;
     }
-  }
+    w1 = w1->prev;
+  } while (w1 != head);
 
-  if (head->next && head->next->score < 0) {
-    sprintf(errmsg,impossibility,3);
-    return 0;
-  }
-
-  *errmsg = '\0';
-  return newL;
+  if (head->next->score < 0)
+    sprintf(errmsg,impossibility,2);
 }
 
 
-char **reformat(const char * const *inlines, int width,
-                int prefix, int suffix, int hang, int last, int min)
+static void justbreaks(
+  struct word *head, struct word *tail, int L, int last, errmsg_t errmsg
+)
+/* Chooses line breaks in a list of struct words according     */
+/* to the policy in "par.doc" for <just> = 1 (L is <L> and     */
+/* last is <last>). head must point to a dummy word, and tail  */
+/* must point to the last word, whose next field must be NULL. */
 {
-  int numin, numout, affix, L, linelen, newL;
+  struct word *w1, *w2;
+  int numgaps, extra, score, gap, maxgap, numbiggaps;
+
+  *errmsg = '\0';
+  if (!head->next) return;
+
+/* Determine the minimum possible largest inter-word gap: */
+
+  w1 = tail;
+  do {
+    w1->score = L;
+    for (numgaps = 0, extra = L - w1->length, w2 = w1->next;
+         extra >= 0;
+         ++numgaps, extra -= 1 + w2->length, w2 = w2->next) {
+      gap = numgaps ? (extra + numgaps - 1) / numgaps : L;
+      if (w2)
+        score = w2->score;
+      else {
+        score = 0;
+        if (!last) gap = 0;
+      }
+      if (gap > score) score = gap;
+      if (score < w1->score) {
+        w1->nextline = w2;
+        w1->score = score;
+      }
+      if (!w2) break;
+    }
+    w1 = w1->prev;
+  } while (w1 != head);
+
+  maxgap = head->next->score;
+  if (maxgap >= L) {
+    strcpy(errmsg, "Cannot justify.\n");
+    return;
+  }
+
+/* Minimize the sum of the squares of the numbers   */
+/* of extra spaces required in each inter-word gap: */
+
+  w1 = tail;
+  do {
+    w1->score = -1;
+    for (numgaps = 0, extra = L - w1->length, w2 = w1->next;
+         extra >= 0;
+         ++numgaps, extra -= 1 + w2->length, w2 = w2->next) {
+      gap = numgaps ? (extra + numgaps - 1) / numgaps : L;
+      if (w2)
+        score = w2->score;
+      else {
+        if (!last) {
+          w1->nextline = NULL;
+          w1->score = 0;
+          break;
+        }
+        score = 0;
+      }
+      if (gap <= maxgap && score >= 0) {
+        numbiggaps = extra % numgaps;
+        score += (extra / numgaps) * (extra + numbiggaps) + numbiggaps;
+        /* The above may not look like the sum of the squares of the numbers */
+        /* of extra spaces required in each inter-word gap, but trust me, it */
+        /* is. It's easier to prove graphically than algebraicly.            */
+        if (w1->score < 0  ||  score <= w1->score) {
+          w1->nextline = w2;
+          w1->score = score;
+        }
+      }
+      if (!w2) break;
+    }
+    w1 = w1->prev;
+  } while (w1 != head);
+
+  if (head->next->score < 0)
+    sprintf(errmsg,impossibility,3);
+}
+
+
+char **reformat(const char * const *inlines, int hang,
+                int prefix, int suffix, int width, int fit,
+                int just, int last, int touch, errmsg_t errmsg)
+{
+  int numin, numout, affix, L, linelen, numgaps, extra, phase;
   const char * const *line, **suffixes = NULL, **suf, *end, *p1, *p2;
   char *q1, *q2, **outlines = NULL;
   struct word dummy, *head, *tail, *w1, *w2;
@@ -200,10 +285,10 @@ char **reformat(const char * const *inlines, int width,
     *suf = end;
     p1 = *line + prefix;
     for (;;) {
-      while (p1 < end && isspace(*p1)) ++p1;
+      while (p1 < end && *p1 == ' ') ++p1;
       if (p1 == end) break;
       p2 = p1;
-      while (p2 < end && !isspace(*p2)) ++p2;
+      while (p2 < end && *p2 != ' ') ++p2;
       if (p2 - p1 > L) p2 = p1 + L;
       w1 = malloc(sizeof (struct word));
       if (!w1) {
@@ -224,7 +309,7 @@ char **reformat(const char * const *inlines, int width,
   w1 = head->next;
   if (w1) {
     p1 = *inlines + prefix;
-    for (p2 = p1;  isspace(*p2);  ++p2);
+    for (p2 = p1;  *p2 == ' ';  ++p2);
     if (w1->chrs == p2) {
       w1->chrs = p1;
       w1->length += p2 - p1;
@@ -233,26 +318,45 @@ char **reformat(const char * const *inlines, int width,
 
 /* Choose line breaks according to policy in "par.doc": */
 
-  newL = choosebreaks(head,tail,L,last,min);
+  if (just) justbreaks(head,tail,L,last,errmsg);
+  else normalbreaks(head,tail,L,fit,last,errmsg);
   if (*errmsg) goto rfcleanup;
+
+/* If touch is non-zero, change L to be the length of the longest line: */
+
+  if (!just && touch) {
+    L = 0;
+    w1 = head->next;
+    while (w1) {
+      for (linelen = w1->length, w2 = w1->next;
+           w2 != w1->nextline;
+           linelen += 1 + w2->length, w2 = w2->next);
+      if (linelen > L) L = linelen;
+      w1 = w2;
+    }
+  }
 
 /* Construct the lines: */
 
-  pbuf = newbuffer(sizeof (char *));
+  pbuf = newbuffer(sizeof (char *), errmsg);
   if (*errmsg) goto rfcleanup;
 
   numout = 0;
   w1 = head->next;
   while (numout < hang || w1) {
-    linelen = suffix ? newL + affix :
-                  w1 ? w1->linelen + prefix :
-                       prefix;
+    if (w1)
+      for (w2 = w1->next, numgaps = 0, extra = L - w1->length;
+           w2 != w1->nextline;
+           ++numgaps, extra -= 1 + w2->length, w2 = w2->next);
+    linelen = suffix  ||  just && (w2 || last) ?
+                L + affix :
+                w1 ? prefix + L - extra : prefix;
     q1 = malloc((linelen + 1) * sizeof (char));
     if (!q1) {
       strcpy(errmsg,outofmem);
       goto rfcleanup;
     }
-    additem(pbuf, &q1);
+    additem(pbuf, &q1, errmsg);
     if (*errmsg) goto rfcleanup;
     ++numout;
     q2 = q1 + prefix;
@@ -260,14 +364,23 @@ char **reformat(const char * const *inlines, int width,
     else if (numin > hang)    memcpy(q1, inlines[numin - 1], prefix);
     else                      while (q1 < q2) *q1++ = ' ';
     q1 = q2;
-    if (w1)
+    if (w1) {
+      phase = numgaps / 2;
       for (w2 = w1;  ; ) {
         memcpy(q1, w2->chrs, w2->length);
         q1 += w2->length;
         w2 = w2->next;
         if (w2 == w1->nextline) break;
         *q1++ = ' ';
+        if (just && (w1->nextline || last)) {
+          phase += extra;
+          while (phase >= numgaps) {
+            *q1++ = ' ';
+            phase -= numgaps;
+          }
+        }
       }
+    }
     q2 += linelen - affix;
     while (q1 < q2) *q1++ = ' ';
     q2 = q1 + suffix;
@@ -279,10 +392,10 @@ char **reformat(const char * const *inlines, int width,
   }
 
   q1 = NULL;
-  additem(pbuf, &q1);
+  additem(pbuf, &q1, errmsg);
   if (*errmsg) goto rfcleanup;
 
-  outlines = copyitems(pbuf);
+  outlines = copyitems(pbuf,errmsg);
 
 rfcleanup:
 

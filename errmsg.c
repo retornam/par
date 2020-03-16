@@ -1,6 +1,6 @@
 /*********************/
 /* errmsg.c          */
-/* for Par 1.00      */
+/* for Par 1.10      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,9 +8,7 @@
 /* This is ANSI C code. */
 
 
-#include "errmsg.h"  /* Makes sure we're consistent with the declarations. */
+#include "errmsg.h"  /* Makes sure we're consistent with the declaration. */
 
-
-char errmsg[163];
 
 const char * const outofmem = "Out of memory.\n";

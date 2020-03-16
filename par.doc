@@ -1,12 +1,12 @@
   *********************
   * par.doc           *
-  * for Par 1.00      *
+  * for Par 1.10      *
   * Copyright 1993 by *
   * Adam M. Costello  *
   *********************
 
 
-    Par 1.00 is a package containing:
+    Par 1.10 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
@@ -33,7 +33,7 @@ Contents
 
 File List
 
-    The Par 1.00 package is always distributed with at least the following
+    The Par 1.10 package is always distributed with at least the following
     files:
 
         buffer.h
@@ -87,7 +87,34 @@ Release Notes
     Each entry below describes changes since the previous version.
 
     Par 1.00 released 25 July 1993
-        This is the first release.
+        The first release.
+
+    Par 1.10 released 2 August 1993
+        Fixed the following bugs:
+            In reformat.c I used sprintf() but forgot to #include <stdio.h>.
+            I forgot to verify that <width> > <prefix> + <suffix>.
+            The first word of a paragraph was expanded to include initial
+            white characters, not just spaces, contrary to par.doc.
+            Some invalid options were not complained about.
+            NUL characters in the input were not handled.
+            A pointer foul-up in freelines() in par.c could cause a crash.
+        Added the following features:
+            Multiple options may be concatenated into a single argument.
+            The PARBODY environment variable.
+            The j option.
+            The f option.
+            The t option.
+        Removed the m option, since its function is better performed by the
+            f and t options. Normally I would avoid making incompatible
+            changes, unless I were doing a complete overhaul of the whole
+            program, in which case I'd make the version number 2.00 to alert
+            users to possible incompatibilities. However, in this particular
+            instance I allowed an incompatibility in a minor upgrade because
+            version 1.00 was distributed to only four people.
+        Changed the handling of white characters: par now changes all of
+            them (except newlines) to spaces as they are read. This is
+            another incompatible change, excused for the same reason.
+        Made all error messages begin with "par error:".
 
 
 Compilation
@@ -102,117 +129,162 @@ Compilation
     will come in handy in the future.
 
     If your compiler warns you about a pointer to a constant being converted
-    to a pointer to a non-constant in line 289 of reformat.c, ignore it.
+    to a pointer to a non-constant in line 402 of reformat.c, ignore it.
     Your compiler (like mine) is in error. What it thinks is a pointer to
     a constant is actually a pointer to a pointer to a constant, which is
-    something quite different. The conversion is legal, and a true ANSI C
-    compiler wouldn't complain.
+    something quite different. The conversion is legal, and I don't think a
+    correct ANSI C compiler would complain.
 
     If your compiler generates any other warnings that you think are
     legitimate, please tell me about them (see the Bugs section).
 
+    Note that all variables in par are either constant or automatic (or
+    both), which means that par can be made reentrant (if your compiler
+    supports it). Given the right operating system, it should be possible
+    for several par processes to share the same code space in memory.
+
 
 Synopsis
 
-    par [w<width>] [p<prefix>] [s<suffix>] [h[<hang>]] [l[<last>]]
-        [m[<min>]] [version]
+    par [version] [h[<hang>]] [p<prefix>] [s<suffix>] [w<width>]
+        [f[<fit>]] [j[<just>]] [l[<last>]] [t[<touch>]]
 
     Things enclosed in [square brackets] are optional. Things enclosed in
     <angle brackets> are variables.
 
-    Any option may be immediately preceeded by a minus sign (-).
-
 
 Description
 
-    par is a filter which copies its input to its output, reformatting each
-    paragraph. Paragraphs are delimited by blank lines.
+    par is a filter which copies its input to its output, changing all white
+    characters (except newlines) to spaces, and reformatting each paragraph.
+    Paragraphs are delimited by blank lines.
 
     Each output paragraph is generated from the corresponding input lines as
     follows:
 
      1. An optional prefix and/or suffix is removed from each input line.
-     2. The remainder is divided into words (delimited by white space).
+     2. The remainder is divided into words (delimited by spaces).
      3. The words are joined into lines to make an eye-pleasing paragraph.
      4. The prefixes and suffixes are reattached.
+
+     If there are suffixes, spaces are inserted before them so that they
+     all end in the same column.
 
 
 Options
 
-    All options except version are used to set values of variables. Values
-    set by command line options hold for all paragraphs in the input. Unset
-    variables are given default values which are recomputed separately for
-    each paragraph.
+    Any command line argument may begin with one minus sign (-) which is
+    ignored. Generally, more than one option may appear in a single command
+    line argument, but there is one exception: the version option must have
+    a whole argument all to itself.
 
-    The approximate role of each variable is described here. See the
-    Details section for a much more complete and precise description.
+    version     Causes all remaining arguments to be ignored. No input is
+                read. "par 1.10" is printed on the output. Of course, this
+                will change in future releases of Par.
 
-    w<width>   Sets the value of <width>, the maximum width of the output
-               paragraph, in characters, not including the trailing newline
-               characters. Must be an unsigned decimal integer greater than
-               <prefix> (see below). Defaults to 72. If <width> is 9 or
-               more, the w is not needed.
+    All remaining options are used to set values of variables. Values set
+    by command line options hold for all paragraphs in the input. Unset
+    variables are given default values. Any unset variables whose default
+    values depend on the input paragraph are recomputed separately for each
+    paragraph.
 
-    p<prefix>  Sets the value of <prefix>, the length of the prefix, in
-               characters. Must be an unsigned decimal integer. Defaults to
-               0 if there are no more than <hang> + 1 lines in the input
-               paragraph (see the h option). Otherwise defaults to the
-               length of the longest common prefix of all lines in the
-               input paragraph except the first <hang> of them. The first
-               <prefix> characters of each output line are copied from the
-               first <prefix> characters of the corresponding input line. If
-               <prefix> is 8 or less, the p is not needed.
+    The approximate role of each variable is described here. See the Details
+    section for a much more complete and precise description. See PARBODY in
+    the Environment section for the definition of body characters.
 
-    s<suffix>  Sets the value of <suffix>, the length of the suffix, in
-               characters. Must be an unsigned decimal integer. Defaults to
-               0 if there is no more than 1 line in the input paragraph.
-               Otherwise defaults to the length of the longest common suffix
-               of all lines in the input paragraph, after this common suffix
-               has been stripped of all initial white characters save the
-               last. The last <suffix> characters of each output line are
-               copied from the last <suffix> characters of the corresponding
-               input line.
+    The first four variables, <hang>, <prefix>, <suffix>, and <width>, may
+    be set to any unsigned decimal integer less than 10000.
 
-    h[<hang>]  Sets the value of <hang>. Must be an unsigned decimal
-               integer. Defaults to 0. Mainly affects the default value of
-               <prefix> (see the p option). If the h option is given without
-               a number, the value 1 is assumed.
+    h[<hang>]   Mainly affects the default value of <prefix>. Defaults to 0.
+                If the h option is given without a number, the value 1 is
+                inferred. (See also the p option.)
 
-    l[<last>]  Sets the value of <last>. Must be 0 or 1. Defaults to 0. If
-               <last> is 1, par tries to make the last line of the output
-               paragraph about the same length as the others. If the l
-               option is given without a number, the value 1 is assumed.
+    p<prefix>   The first <prefix> characters of each output line are copied
+                from the first <prefix> characters of the corresponding
+                input line. Defaults to 0 if there are no more than
+                <hang> + 1 lines in the input paragraph. Otherwise, defaults
+                to the length of the longest string of non-body characters
+                appearing at the beginning of every line of the input
+                paragraph except the first <hang> of them. (See also the h
+                option.)
 
-    m[<min>]   Sets the value of <min>. Must be 0 or 1. Defaults to <last>.
-               If <min> is 1, par will try to make the paragraph narrower
-               without shortening the shortest line. If the m option is
-               given without a number, the value 1 is assumed.
+    s<suffix>   The last <suffix> characters of each output line are copied
+                from the last <suffix> characters of the corresponding input
+                line. Defaults to 0 if there is no more than 1 line in the
+                input paragraph. Otherwise, defaults to the length of the
+                longest string of non-body characters appearing at the end
+                of every line of the input paragraph, after said string has
+                been stripped of all initial spaces but the last.
 
-    version    Causes all other options to be ignored. No input is read.
-               "par 1.00" is printed on the output. Of course, this will
-               change in future releases of Par.
+    w<width>    No line in the output paragraph will contain more than
+                <width> characters, not including the trailing newlines.
+                Defaults to 72.
 
-    If the value of any variable is set more than once, the last value is
-    used. For each paragraph, default values for any variables not set by
-    command line options are computed in the following order:
+    The remaining four variables, <fit>, <just>, <last>, and <touch>, may be
+    set to either 0 or 1. If the number is absent in the option, the value 1
+    is inferred.
 
-        <width> <hang> <last> <min> <prefix> <suffix>
+    f[<fit>]    If <fit> is 1 and <just> is 0, par will try to make the
+                lines in the output paragraph as nearly the same length as
+                possible, even if it means making the paragraph narrower.
+                Defaults to 0. (See also the j option.)
 
-    No integer appearing in an option may exceed 9999.
+    j[<just>]   If <just> is 1, par justifies the paragraph, inserting
+                spaces between words so that all lines in the output
+                paragraph have length <width> (except the last, if <last> is
+                0). <fit> has no effect if <just> is 1. Defaults to 0. (See
+                also the w, l, and f options.)
+
+    l[<last>]   If <last> is 1, par tries to make the last line of the
+                output paragraph about the same length as the others.
+                Defaults to 0.
+
+    t[<touch>]  Has no effect if <suffix> is 0 or <just> is 1. Otherwise,
+                if <touch> is 0, all lines in the output paragraph have
+                length <width>. If <touch> is 1, then the length of the
+                lines is decreased until the suffixes touch the body of the
+                paragraph. Defaults to the logical OR of <fit> and <last>.
+                (See also the s, j, w, f, and l options.)
+
+    If the value of any variable is set more than once, the last value
+    is used. When unset variables are assigned default values, <hang> is
+    assigned before <prefix>, and <fit> and <last> are assigned before
+    <touch> (because of the dependencies).
 
     It is an error if <width> <= <prefix> + <suffix>.
 
 
 Environment
 
-    If the environment variable PARINIT is set, par will read command line
-    options from it before it reads them from the command line.
+    PARINIT     If set, par will read command line options from PARINIT
+                before it reads them from the command line.
+
+    PARBODY     All and only the characters appearing in the value of
+                PARBODY count as body characters (which are used for
+                determining the default values of <prefix> and <suffix>).
+                The underscore is an escape character, which may begin the
+                following escape sequences:
+
+                   __ = an underscore
+                   _s = a space
+                   _A = all upper case characters
+                   _a = all lower case characters
+                   _0 = all decimal digits
+                 _xhh = the character represented by the two hexadecimal
+                        digits hh (which may be upper or lower case)
+
+                A good value for PARBODY might be "_a_A.", but it depends on
+                the application.
+
+    If a NUL character appears in the value of an environment variable, it
+    and the rest of the string will not be seen by par.
 
 
 Details
 
     The white characters are the space, formfeed, newline, carriage return,
-    tab, and vertical tab.
+    tab, and vertical tab. Every white character in the input (unless it is
+    a newline) is changed into a space immediately after it has been read.
 
     Lines are terminated by newline characters, but the newlines are not
     considered to be included in the lines. If the last character of the
@@ -221,14 +293,16 @@ Details
     number of input lines will be 0). Thus, the input can always be viewed
     as a sequence of lines.
 
-    A line is called blank if and only if it contains no non-white
-    characters. A subsequence of non-blank lines is called maximal if and
-    only if there is no non-blank line immediately before or after it.
+    NUL characters in the input are invisible, just as if they weren't there
+    at all.
+
+    A line is called blank if and only if it contains only spaces, or is
+    empty. A subsequence of non-blank lines is called maximal if and only if
+    there is no non-blank line immediately before or after it.
 
     The process described in the remainder of this section is applied
-    independently to each maximal subsequence of non-blank input lines.
-    (Each blank line of the input is transformed into an empty line on the
-    output).
+    independently to each maximal subsequence of non-blank input lines. Each
+    blank line of the input is transformed into an empty line on the output.
 
     After the values of the variables are determined (see the Options
     section), the first <prefix> characters and the last <suffix> characters
@@ -236,10 +310,9 @@ Details
     line to contain fewer than <prefix> + <suffix> characters.
 
     The remaining text is treated as a sequence of characters, not lines.
-    The text is broken into words, which are delimited by white characters.
-    That is, a word is a maximal sub-sequence of non-white characters. If
-    there is at least one word, and the first word is preceeded only by
-    spaces (strictly spaces, not other white characters), then the first
+    The text is broken into words, which are delimited by spaces. That is, a
+    word is a maximal sub-sequence of non-spaces. If there is at least one
+    word, and the first word is preceeded only by spaces, then the first
     word is expanded to include those spaces.
 
     Let <L> = <width> - <prefix> - <suffix>.
@@ -247,37 +320,65 @@ Details
     Every word which contains more than <L> characters is broken, after each
     <L>th character, into multiple words.
 
-    These words are reassembled, preserving their order, into lines.
-    Adjacent words within a line are separated by a single space.
+    These words are reassembled, preserving their order, into lines. If
+    <just> is 0, adjacent words within a line are separated by a single
+    space, and line breaks are chosen so that the paragraph satisfies the
+    following properties:
 
-    If all the words fit on a single line of no more than <L> characters,
-    then no line breaks are inserted. Otherwise, line breaks are placed in
-    such a way that the resulting paragraph satisfies certain properties. If
-    <min> is 1, those properties are:
+         1. No line contains more than <L> characters.
 
-     1. No line contains more than <L> characters.
+         2. If <fit> is 1, the difference between the lengths of the
+            shortest and longest lines is as small as possible.
 
-     2. The shortest line is as long as possible, subject to 1.
+         3. The shortest line is as long as possible, subject to properties
+            1 and 2.
 
-     3. The longest line is as short as possible, subject to properties 1
-        and 2. Call its length <newL>.
+         4. Let <target> be <L> if <fit> is 0, or the length of the longest
+            line if <fit> is 1. The sum of the squares of the differences
+            between <target> and the lengths of the lines is as small as
+            possible, subject to properties 1, 2, and 3.
 
-     4. The sum of the squares of the differences between <newL> and the
-        lengths of the lines is as small as possible, subject to properties
-        1, 2, and 3.
+        If <last> is 0, then the last line does not count as a line for the
+        purposes of properties 2, 3, and 4 above.
 
-    If <last> is 0, then the last line does not count as a line for the
-    purposes of properties 2 and 4 above.
+        If all the words fit on a single line, then the properties as worded
+        above don't make much sense. In that case, no line breaks are
+        inserted.
 
-    If <min> is 0, then property 3 is disregarded, and <newL> is set equal
-    to <L>.
+    If <just> is 1, then adjacent words within a line are separated by one
+    space plus zero or more extra spaces, the value of <fit> is disregarded,
+    and line breaks are chosen so that the paragraph satisfies the following
+    properties:
 
-    If the number of lines in the resultant paragraph is less than <hang>,
+         1. Every line contains exactly <L> characters.
+
+         2. The largest inter-word gap is as small as possible, subject to
+            property 1.
+
+         3. The sum of the squares of the numbers of extra spaces required
+            in each inter-word gap is as small as possible, subject to
+            properties 1 and 2.
+
+        If <last> is 0, then the last line does not count as a line for the
+        purposes of property 1, and it does not require or contain any extra
+        spaces.
+
+        Extra spaces are distributed as uniformly as possible among the
+        inter-word gaps in each line.
+
+        Some paragraphs are impossible to justify, because they contain
+        words too long relative to <L>. If this is the case, it is
+        considered an error (see the Diagnostics section).
+
+    If the number of lines in the resulting paragraph is less than <hang>,
     then empty lines are added at the end to bring the number of lines up to
     <hang>.
 
+    If <just> is 0 and <touch> is 1, then <L> is changed to be the length of
+    the longest line.
+
     If <suffix> is not 0, then each line is padded at the end with spaces to
-    bring its length up to <newL>.
+    bring its length up to <L>.
 
     To each line is prepended <prefix> characters. Let <n> be the number of
     input lines. The characters which are prepended to the <i>th line are
@@ -313,7 +414,8 @@ Diagnostics
     output, and par will return EXIT_FAILURE. If the error is local to a
     single paragraph, then the preceeding paragraphs will have been output
     before the error was detected. Line numbers in error messages are local
-    to the input paragraph in which the error occurred.
+    to the input paragraph in which the error occurred. All error messages
+    begin with "par error:" on a line by itself.
 
     Of course, trying to print an error message would be futile if an error
     resulted from an output function, so par doesn't bother doing any error
@@ -328,106 +430,200 @@ Examples
 
     Original paragraph:
 
-        We hold these truths to be self evident,
-        that all men are created equal,
-        that they are endowed by their creator
-        with certain unalienable rights,
-        that among these are
-        life, liberty, and the
-        pursuit of happiness.
+        We the people of the United States,
+        in order to form a more perfect union,
+        establish justice,
+        insure domestic tranquility,
+        provide for the common defense,
+        promote the general welfare,
+        and secure the blessing of liberty
+        to ourselves and our posterity,
+        do ordain and establish the Constitution
+        of the United States of America.
 
-    After a greedy algorithm with width = 61:
+    After a greedy algorithm with width = 39:
 
-        We hold these truths to be self evident, that all men
-        are created equal, that they are endowed by their
-        creator with certain unalienable rights, that among
-        these are life, liberty, and the pursuit of
-        happiness.
+        We the people of the United
+        States, in order to form a more
+        perfect union, establish
+        establish justice, insure
+        domestic tranquility, provide
+        for the common defense, promote
+        the general welfare, and secure
+        the blessing of liberty to
+        ourselves and our posterity, do
+        ordain and establish the
+        Constitution of the United
+        States of America.
 
-    After "par 61":
+    After "par 39":
 
-        We hold these truths to be self evident, that all
-        men are created equal, that they are endowed by
-        their creator with certain unalienable rights, that
-        among these are life, liberty, and the pursuit of
-        happiness.
+        We the people of the United    
+        States, in order to form a     
+        more perfect union, establish  
+        justice, insure domestic       
+        tranquility, provide for the   
+        common defense, promote the    
+        general welfare, and secure    
+        the blessing of liberty to     
+        ourselves and our posterity,   
+        do ordain and establish the    
+        Constitution of the United     
+        States of America.             
 
-    The line breaks chosen by par are clearly more pleasing.
+    The line breaks chosen by par are clearly more eye-pleasing.
 
-    I use par in conjunction with the !} command of the vi editor. Other
-    editors probably provide a similar feature for filtering text.
+    par is most useful in conjunction with the text-filtering features of an
+    editor, such as the ! commands of vi.
 
     The rest of this section is a series of before-and-after pictures
     showing some typical uses of par.
 
     Before:
 
-          Four score and seven years ago, our fathers brought
-        forth on this continent
-        a new nation.
+        /*   We the people of the United States, */
+        /* in order to form a more perfect union, */
+        /* establish justice, */
+        /* insure domestic tranquility, */
+        /* provide for the common defense, */
+        /* promote the general welfare, */
+        /* and secure the blessing of liberty */
+        /* to ourselves and our posterity, */
+        /* do ordain and establish the Constitution */
+        /* of the United States of America. */
 
-    After "par 42":
+    After "par 59":
 
-          Four score and seven years ago,
-        our fathers brought forth on this
-        continent a new nation.
+        /*   We the people of the United States, in      */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility, provide */
+        /* for the common defense, promote the general   */
+        /* welfare, and secure the blessing of liberty   */
+        /* to ourselves and our posterity, do ordain     */
+        /* and establish the Constitution of the United  */
+        /* States of America.                            */
+
+    Or after "par 59f":
+
+        /*   We the people of the United States,  */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic     */
+        /* tranquility, provide for the common    */
+        /* defense, promote the general welfare,  */
+        /* and secure the blessing of liberty to  */
+        /* ourselves and our posterity, do ordain */
+        /* and establish the Constitution of the  */
+        /* United States of America.              */
+
+    Or after "par 59l":
+
+        /*   We the people of the United States, in      */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility,         */
+        /* provide for the common defense, promote       */
+        /* the general welfare, and secure the           */
+        /* blessing of liberty to ourselves and our      */
+        /* posterity, do ordain and establish the        */
+        /* Constitution of the United States of America. */
+
+    Or after "par 59lf":
+
+        /*   We the people of the United States,  */
+        /* in order to form a more perfect union, */
+        /* establish justice, insure domestic     */
+        /* tranquility, provide for the common    */
+        /* defense, promote the general welfare,  */
+        /* and secure the blessing of liberty     */
+        /* to ourselves and our posterity, do     */
+        /* ordain and establish the Constitution  */
+        /* of the United States of America.       */
+
+    Or after "par 59lft0":
+
+        /*   We the people of the United States,         */
+        /* in order to form a more perfect union,        */
+        /* establish justice, insure domestic            */
+        /* tranquility, provide for the common           */
+        /* defense, promote the general welfare,         */
+        /* and secure the blessing of liberty            */
+        /* to ourselves and our posterity, do            */
+        /* ordain and establish the Constitution         */
+        /* of the United States of America.              */
+
+    Or after "par 59j":
+
+        /*   We  the people  of  the  United States,  in */
+        /* order to form a more perfect union, establish */
+        /* justice, insure domestic tranquility, provide */
+        /* for the  common defense, promote  the general */
+        /* welfare, and  secure the blessing  of liberty */
+        /* to ourselves and our posterity, do ordain and */
+        /* establish  the  Constitution  of  the  United */
+        /* States of America.                            */
+
+    Or after "par 59jl":
+
+        /*   We  the   people  of  the   United  States, */
+        /* in   order    to   form   a    more   perfect */
+        /* union,  establish  justice,  insure  domestic */
+        /* tranquility, provide for  the common defense, */
+        /* promote  the  general   welfare,  and  secure */
+        /* the  blessing  of  liberty to  ourselves  and */
+        /* our  posterity, do  ordain and  establish the */
+        /* Constitution of the United States of America. */
 
     Before:
 
-        /* Four score and seven years */
-        /* ago, our */
-        /* fathers brought forth on this continent */
-        /* a new nation. */
+        Preamble      We the people of the United States,
+        to the US     in order to form
+        Constitution  a more perfect union,
+                      establish justice,
+                      insure domestic tranquility,
+                      provide for the common defense,
+                      promote the general welfare,
+                      and secure the blessing of liberty
+                      to ourselves and our posterity,
+                      do ordain and establish
+                      the Constitution
+                      of the United States of America.
 
-    After "par 42":
+    After "par 52h3":
 
-        /* Four score and seven years   */
-        /* ago, our fathers brought     */
-        /* forth on this continent a    */
-        /* new nation.                  */
-
-    Or after "par l 42":
-
-        /* Four score and seven    */
-        /* years ago, our fathers  */
-        /* brought forth on this   */
-        /* continent a new nation. */
-
-    Or after "par l 42 m0":
-
-        /* Four score and seven         */
-        /* years ago, our fathers       */
-        /* brought forth on this        */
-        /* continent a new nation.      */
-
-    Before:
-
-        Gettysburg Address: Four score
-                            and seven years ago,
-                            our fathers brought forth on
-                            this continent
-                            a new nation.
-
-    After "par h 56":
-
-        Gettysburg Address: Four score and seven years
-                            ago, our fathers brought
-                            forth on this continent a
-                            new nation.
+        Preamble      We the people of the United
+        to the US     States, in order to form a
+        Constitution  more perfect union, establish
+                      justice, insure domestic
+                      tranquility, provide for the
+                      common defense, promote the
+                      general welfare, and secure
+                      the blessing of liberty to
+                      ourselves and our posterity,
+                      do ordain and establish the
+                      Constitution of the United
+                      States of America.
 
     Before:
 
-        1  Four score and
-        2  seven years ago,
-        3  our fathers brought
-        4  forth on this continent
-        5  a new nation.
+         1  We the people of the United States,
+         2  in order to form a more perfect union,
+         3  establish justice,
+         4  insure domestic tranquility,
+         5  provide for the common defense,
+         6  promote the general welfare,
+         7  and secure the blessing of liberty
+         8  to ourselves and our posterity,
+         9  do ordain and establish the Constitution
+        10  of the United States of America.
 
-    After "par p11 44":
+    After "par 59p12l":
 
-        1  Four score and seven years ago,
-        2  our fathers brought forth on this
-        3  continent a new nation.
+         1  We the people of the United States, in order to
+         2  form a more perfect union, establish justice,
+         3  insure domestic tranquility, provide for the
+         4  common defense, promote the general welfare,
+         5  and secure the blessing of liberty to ourselves
+         6  and our posterity, do ordain and establish the
+         7  Constitution of the United States of America.
 
 
 Limitations
@@ -453,8 +649,8 @@ Limitations
     would only work for English text).
 
     If you use tabs, you probably won't like the way par handles (or doesn't
-    handle) them. It treats them just like spaces. I didn't bother trying
-    to make sense of tabs because they don't make sense to begin with. Not
+    handle) them. It turns them into spaces. I didn't bother trying to
+    make sense of tabs because they don't make sense to begin with. Not
     everyone's terminal has the same tab settings, so text files containing
     tabs are sometimes mangled. In fact, almost every text file containing
     tabs gets mangled when something is inserted at the beginning of each
@@ -468,16 +664,21 @@ Limitations
     consider adding this capability in a future release, but right now I'm
     not sure how I'd want it to work.
 
+    Currently, par is best suited to operating on one paragraph at a time. I
+    delimit paragraphs by blank lines only because it is easy. It might be
+    nice if par could delimit paragraphs in other ways, but so far I haven't
+    thought of any general-purpose, clean set of criteria.
+
 
 Bugs
 
-    If I knew of any bugs, I wouldn't have released the package. Of course,
-    there may be bugs that I haven't yet discovered.
+    If I knew of any bugs, I wouldn't release the package. Of course, there
+    may be bugs that I haven't yet discovered.
 
     If you find any bugs, or if you have any suggestions, please send e-mail
     to:
 
-        amc@wuecl.wustl.edu
+        amc@ecl.wustl.edu
 
     or send paper mail to:
 

@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.c          */
-/* for Par 1.00      */
+/* for Par 1.10      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -8,14 +8,14 @@
 /* This is ANSI C code. */
 
 
-/* additem(), copyitems(), and nextitem() rely on the fact that */
-/* sizeof (char) is 1. See section A7.4.8 of The C Programming  */
-/* Language, Second Edition, by Kerninghan and Ritchie.         */
+/* additem(), copyitems(), and nextitem() rely   */
+/* on the fact that sizeof (char) is 1. See      */
+/* section A7.4.8 of The C Programming Language, */
+/* Second Edition, by Kerninghan and Ritchie.    */
 
 
-#include "buffer.h"  /* Makes sure we're consistent with the */
-                     /* prototypes. Also includes <stddef.h> */
-#include "errmsg.h"
+#include "buffer.h"  /* Makes sure we're consistent with the prototypes. */
+                     /* Also includes <stddef.h> and "errmsg.h".         */
 
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +43,7 @@ struct block {
 };
 
 
-struct buffer *newbuffer(size_t itemsize)
+struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
 {
   struct buffer *buf;
   struct block *blk;
@@ -107,7 +107,7 @@ void clearbuffer(struct buffer *buf)
 }
 
 
-void additem(struct buffer *buf, const void *item)
+void additem(struct buffer *buf, const void *item, errmsg_t errmsg)
 {
   struct block *blk, *new;
   void *items;
@@ -156,7 +156,7 @@ int numitems(struct buffer *buf)
 }
 
 
-void *copyitems(struct buffer *buf)
+void *copyitems(struct buffer *buf, errmsg_t errmsg)
 {
   int n;
   void *r;

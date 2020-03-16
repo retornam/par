@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.h          */
-/* for Par 1.00      */
+/* for Par 1.10      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -12,19 +12,22 @@
 /* always succeed, provided that they are passed valid arguments. */
 
 
+#include "errmsg.h"
+
 #include <stddef.h>
 
 
 struct buffer;
 
 
-struct buffer *newbuffer(size_t itemsize);
+struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg);
 
-  /* newbuffer(itemsize) returns a pointer to a new empty struct  */
-  /* buffer which holds items of size itemsize. Any struct buffer */
-  /* *buf passed to any function declared in this header must     */
-  /* have been obtained from this function. itemsize must not be  */
-  /* 0. newbuffer() uses errmsg, and returns NULL on failure.     */
+  /* newbuffer(itemsize,errmsg) returns a pointer to */
+  /* a new empty struct buffer which holds items of  */
+  /* size itemsize. Any struct buffer *buf passed to */
+  /* any function declared in this header must have  */
+  /* been obtained from this function. itemsize must */
+  /* not be 0. Returns NULL on failure.              */
 
 
 void freebuffer(struct buffer *buf);
@@ -35,14 +38,15 @@ void freebuffer(struct buffer *buf);
 
 void clearbuffer(struct buffer *buf);
 
-  /* clearbuffer(buf) removes all items from */
-  /* *buf, but does not free any memory.     */
+  /* clearbuffer(buf) removes  */
+  /* all items from *buf, but  */
+  /* does not free any memory. */
 
 
-void additem(struct buffer *buf, const void *item);
+void additem(struct buffer *buf, const void *item, errmsg_t errmsg);
 
-  /* additem(buf,item) copies *item to the end of *buf. item must point */
-  /* to an object of the proper size for *buf. additem() uses errmsg.   */
+  /* additem(buf,item,errmsg) copies *item to the end of *buf. */
+  /* item must point to an object of the proper size for *buf. */
 
 
 int numitems(struct buffer *buf);
@@ -50,13 +54,13 @@ int numitems(struct buffer *buf);
   /* numitems(buf) returns the number of items in *buf. */
 
 
-void *copyitems(struct buffer *buf);
+void *copyitems(struct buffer *buf, errmsg_t errmsg);
 
-  /* copyitems(buf) returns an array of objects of the proper size for    */
-  /* *buf, one for each item in *buf, or (void *) 0 if there are no items */
-  /* in buf. The elements of the array are copied from the items in *buf, */
-  /* in order. The array is allocated with malloc(), so it may be freed   */
-  /* with free(). copyitems() uses errmsg, and returns NULL on failure.   */
+  /* copyitems(buf,errmsg) returns an array of objects of the proper size */
+  /* for *buf, one for each item in *buf, or (void *) 0 if there are no   */
+  /* items in buf. The elements of the array are copied from the items in */
+  /* *buf, in order. The array is allocated with malloc(), so it may be   */
+  /* freed with free(). Returns NULL on failure.                          */
 
 
 void *nextitem(struct buffer *buf);
