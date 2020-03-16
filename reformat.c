@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.30      */
+/* for Par 1.31      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -25,7 +25,7 @@
 #endif
 
 
-struct word {
+typedef struct word {
   const char *chrs;       /* Pointer to the characters in the word */
                           /* (NOT terminated by '\0').             */
   struct word *prev,      /* Pointer to previous word.             */
@@ -35,10 +35,10 @@ struct word {
   int score,              /*   Value of the objective function.    */
       length;             /* Length of this word.                  */
   short flags;            /* Notable properties of this word.      */
-};
+} word;
 
 /* The following may be bitwise-OR'd together */
-/* to set the flags field of a struct word:   */
+/* to set the flags field of a word:          */
 
 const short W_SHIFTED = 1,  /* This word should have an extra space before */
                             /* it unless it's the first word in the line.  */
@@ -53,9 +53,9 @@ const char * const impossibility =
   "Impossibility #%d has occurred. Please report it.\n";
 
 
-static int checkcapital(struct word *w)
-/* Returns 1 if *w is capitalized according   */
-/* to the definition in par.doc, or 0 if not. */
+static int checkcapital(word *w)
+/* Returns 1 if *w is capitalized according to the definition */
+/* in par.doc (assuming <cap> is 0), or 0 if not.             */
 {
   const char *p, *end;
 
@@ -64,7 +64,7 @@ static int checkcapital(struct word *w)
 }
 
 
-static int checkcurious(struct word *w)
+static int checkcurious(word *w)
 /* Returns 1 if *w is curious according to */
 /* the definition in par.doc, or 0 if not. */
 {
@@ -87,17 +87,16 @@ static int checkcurious(struct word *w)
 }
 
 
-static int simplebreaks(struct word *head, struct word *tail, int L, int last)
+static int simplebreaks(word *head, word *tail, int L, int last)
 
-/* Chooses line breaks in a list of struct words which maximize the   */
-/* length of the shortest line.  L is the maximum line length.  The   */
-/* last line counts as a line only if last is non-zero. _head must    */
-/* point to a dummy word, and tail must point to the last word, whose */
-/* next field must be NULL.  Returns the length of the shortest line  */
-/* on success, -1 if there is a word of length greater than L, or L   */
-/* if there are no lines.                                             */
+/* Chooses line breaks in a list of words which maximize the length of the   */
+/* shortest line.  L is the maximum line length.  The last line counts as a  */
+/* line only if last is non-zero. _head must point to a dummy word, and tail */
+/* must point to the last word, whose next field must be NULL.  Returns the  */
+/* length of the shortest line on success, -1 if there is a word of length   */
+/* greater than L, or L if there are no lines.                               */
 {
-  struct word *w1, *w2;
+  word *w1, *w2;
   int linelen, score;
 
   if (!head->next) return L;
@@ -127,17 +126,15 @@ static int simplebreaks(struct word *head, struct word *tail, int L, int last)
 }
 
 
-static void normalbreaks(struct word *head, struct word *tail,
-                         int L, int fit, int last, errmsg_t errmsg)
+static void normalbreaks(word *head, word *tail, int L,
+                         int fit, int last, errmsg_t errmsg)
 
-/* Chooses line breaks in a list of struct    */
-/* words according to the policy in "par.doc" */
-/* for <just> = 0 (L is <L>, fit is <fit>,    */
-/* and last is <last>).  head must point to   */
-/* a dummy word, and tail must point to the   */
-/* last word, whose next field must be NULL.  */
+/* Chooses line breaks in a list of words according to the policy   */
+/* in "par.doc" for <just> = 0 (L is <L>, fit is <fit>, and last is */
+/* <last>).  head must point to a dummy word, and tail must point   */
+/* to the last word, whose next field must be NULL.                 */
 {
-  struct word *w1, *w2;
+  word *w1, *w2;
   int tryL, shortest, score, target, linelen, extra, minlen;
 
   *errmsg = '\0';
@@ -202,15 +199,15 @@ static void normalbreaks(struct word *head, struct word *tail,
 }
 
 
-static void justbreaks(
-  struct word *head, struct word *tail, int L, int last, errmsg_t errmsg
-)
-/* Chooses line breaks in a list of struct words according     */
-/* to the policy in "par.doc" for <just> = 1 (L is <L> and     */
-/* last is <last>).  head must point to a dummy word, and tail */
-/* must point to the last word, whose next field must be NULL. */
+static void justbreaks(word *head, word *tail,
+                       int L, int last, errmsg_t errmsg)
+
+/* Chooses line breaks in a list of words according to the  */
+/* policy in "par.doc" for <just> = 1 (L is <L> and last is */
+/* <last>).  head must point to a dummy word, and tail must */
+/* point to the last word, whose next field must be NULL.   */
 {
-  struct word *w1, *w2;
+  word *w1, *w2;
   int numgaps, extra, score, gap, maxgap, numbiggaps;
 
   *errmsg = '\0';
@@ -290,15 +287,15 @@ static void justbreaks(
 
 char **reformat(
   const char * const *inlines, const char * const *endline,
-  int hang, int prefix, int suffix, int width, int fit, int guess,
-  int just, int last, int Report, int touch, errmsg_t errmsg
+  int hang, int prefix, int suffix, int width, int cap, int fit,
+  int guess, int just, int last, int Report, int touch, errmsg_t errmsg
 )
 {
   int numin, affix, L, onfirstword = 1, linelen, numout, numgaps, extra, phase;
   const char * const *line, **suffixes = NULL, **suf, *end, *p1, *p2;
   char *q1, *q2, **outlines = NULL;
-  struct word dummy, *head, *tail, *w1, *w2;
-  struct buffer *pbuf = NULL;
+  word dummy, *head, *tail, *w1, *w2;
+  buffer *pbuf = NULL;
 
 /* Initialization: */
 
@@ -343,7 +340,7 @@ char **reformat(
         onfirstword = 0;
       }
       while (p2 < end && *p2 != ' ') ++p2;
-      w1 = malloc(sizeof (struct word));
+      w1 = malloc(sizeof (word));
       if (!w1) {
         strcpy(errmsg,outofmem);
         goto rfcleanup;
@@ -363,7 +360,7 @@ char **reformat(
   if (guess) {
     for (w1 = head, w2 = head->next;  w2;  w1 = w2, w2 = w2->next) {
       if (checkcurious(w2)) w2->flags |= W_CURIOUS;
-      if (checkcapital(w2)) {
+      if (cap || checkcapital(w2)) {
         w2->flags |= W_CAPITAL;
         if (iscurious(w1))
           if (w1->chrs[w1->length] && w1->chrs + w1->length + 1 == w2->chrs) {
@@ -399,7 +396,7 @@ char **reformat(
   else
     for (w2 = head->next;  w2;  w2 = w2->next)
       while (w2->length > L) {
-        w1 = malloc(sizeof (struct word));
+        w1 = malloc(sizeof (word));
         if (!w1) {
           strcpy(errmsg,outofmem);
           goto rfcleanup;

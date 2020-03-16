@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.c          */
-/* for Par 1.30      */
+/* for Par 1.31      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -37,27 +37,27 @@ struct buffer {
   size_t itemsize;        /* The size of an item.                */
 };
 
-struct block {
+typedef struct block {
   struct block *next;  /* The next block, or NULL if none.              */
   void *items;         /* Storage for the items in this block.          */
   int maxhere,         /* Number of items that fit in *items.           */
       numprevious,     /* Total of numhere for all previous blocks.     */
       numhere;         /* The first numhere slots in *items are filled. */
-};
+} block;
 
 
-struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
+buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
 {
-  struct buffer *buf;
-  struct block *blk;
+  buffer *buf;
+  block *blk;
   void *items;
   int maxhere;
 
   maxhere = 124 / itemsize;
   if (maxhere < 4) maxhere = 4;
 
-  buf = (struct buffer *) malloc(sizeof (struct buffer));
-  blk = (struct block *) malloc(sizeof (struct block));
+  buf = (buffer *) malloc(sizeof (buffer));
+  blk = (block *) malloc(sizeof (block));
   items = malloc(maxhere * itemsize);
   if (!buf || !blk || !items) {
     strcpy(errmsg,outofmem);
@@ -75,7 +75,8 @@ struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
   *errmsg = '\0';
   return buf;
 
-  nberror:
+nberror:
+
   if (buf) free(buf);
   if (blk) free(blk);
   if (items) free(items);
@@ -83,9 +84,9 @@ struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg)
 }
 
 
-void freebuffer(struct buffer *buf)
+void freebuffer(buffer *buf)
 {
-  struct block *blk, *tmp;
+  block *blk, *tmp;
 
   blk = buf->firstblk;
   while (blk) {
@@ -99,9 +100,9 @@ void freebuffer(struct buffer *buf)
 }
 
 
-void clearbuffer(struct buffer *buf)
+void clearbuffer(buffer *buf)
 {
-  struct block *blk;
+  block *blk;
 
   for (blk = buf->firstblk;  blk;  blk = blk->next)
     blk->numhere = 0;
@@ -110,9 +111,9 @@ void clearbuffer(struct buffer *buf)
 }
 
 
-void additem(struct buffer *buf, const void *item, errmsg_t errmsg)
+void additem(buffer *buf, const void *item, errmsg_t errmsg)
 {
-  struct block *blk, *new;
+  block *blk, *new;
   void *items;
   int maxhere;
   size_t itemsize = buf->itemsize;
@@ -123,7 +124,7 @@ void additem(struct buffer *buf, const void *item, errmsg_t errmsg)
     new = blk->next;
     if (!new) {
       maxhere = 2 * blk->maxhere;
-      new = (struct block * ) malloc(sizeof (struct block));
+      new = (block * ) malloc(sizeof (block));
       items = malloc(maxhere * itemsize);
       if (!new || !items) {
         strcpy(errmsg,outofmem);
@@ -146,24 +147,25 @@ void additem(struct buffer *buf, const void *item, errmsg_t errmsg)
   *errmsg = '\0';
   return;
 
-  aierror:
+aierror:
+
   if (new) free(new);
   if (items) free(items);
 }
 
 
-int numitems(struct buffer *buf)
+int numitems(buffer *buf)
 {
-  struct block *blk = buf->current;
+  block *blk = buf->current;
   return blk->numprevious + blk->numhere;
 }
 
 
-void *copyitems(struct buffer *buf, errmsg_t errmsg)
+void *copyitems(buffer *buf, errmsg_t errmsg)
 {
   int n;
   void *r;
-  struct block *blk, *b;
+  block *blk, *b;
   size_t itemsize = buf->itemsize;
 
   b = buf->current;
@@ -187,14 +189,14 @@ void *copyitems(struct buffer *buf, errmsg_t errmsg)
 }
 
 
-void rewindbuffer(struct buffer *buf)
+void rewindbuffer(buffer *buf)
 {
   buf->nextblk = buf->firstblk;
   buf->nextindex = 0;
 }
 
 
-void *nextitem(struct buffer *buf)
+void *nextitem(buffer *buf)
 {
   void *r;
 

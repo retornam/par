@@ -1,12 +1,12 @@
   *********************
   * par.doc           *
-  * for Par 1.30      *
+  * for Par 1.31      *
   * Copyright 1993 by *
   * Adam M. Costello  *
   *********************
 
 
-    Par 1.30 is a package containing:
+    Par 1.31 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
@@ -34,23 +34,25 @@ Contents
 
 File List
 
-    The Par 1.30 package is always distributed with at least the following
+    The Par 1.31 package is always distributed with at least the following
     files:
 
-        buffer.h
         buffer.c
-        failf.h
+        buffer.h
+        charset.c
+        charset.h
         failf.c
+        failf.h
         par.1
         par.c
         par.doc
         protoMakefile
-        reformat.h
         reformat.c
+        reformat.h
 
     Each file is a text file which identifies itself on the second line, and
     identifies the version of Par to which it belongs on the third line,
-    so you can always tell which file is which even if the files have been
+    so you can always tell which file is which, even if the files have been
     renamed.
 
     The file "par.1" is a man page for the filter par (not to be confused
@@ -100,9 +102,7 @@ Release Notes
             NUL characters in the input were not handled.
             A pointer foul-up in freelines() in par.c could cause a crash.
         Added the following features:
-            The f option.
-            The j option.
-            The t option.
+            The f, j, and t options.
             The PARBODY environment variable.
             Multiple options may be concatenated into a single argument.
         Removed the m option:
@@ -119,16 +119,16 @@ Release Notes
             same reason.
         Made all error messages begin with "par error:".
 
-    Par 1.20 released 10 Aug 1993
+    Par 1.20 released 10 August 1993
         Since Par 1.10 was distributed to no one, I've made some more
             incompatible changes in Par 1.20.
         Added the following features:
             The d option.
-            Paragraphs are now delimited by vacant lines, not just blank
+            Paragraphs are now separated by vacant lines, not just blank
                 lines.
             <hang> now affects not only <prefix> but also <suffix>.
 
-    Par 1.30 released 18 Aug 1993
+    Par 1.30 released 18 August 1993
         Since Par 1.20 was posted to comp.sources.misc, I have made only
             backward-compatible changes in Par 1.30.
         Fixed the following bugs:
@@ -156,6 +156,27 @@ Release Notes
         Added a clean target to protoMakefile (suggested by hlj@posix.com
             (Hal Jespersen)).
 
+    Par 1.31 released 7 September 1993
+        The version number is 1.31 rather than 1.40 because all added
+            features are really just enhancements of existing features.
+        Fixed the following bug:
+            In par.doc, in the example of a paragraph produced by a greedy
+                algorithm, the word "establish" appeared twice in a row.
+                Thanks go to niel@astro.rug.nl (Daniel Kussendrager) for
+                first pointing this out.  (The example is now even better
+                because the paragraph looks even worse than before.)
+        Added the following features:
+            A usage message to accompany command line or environment
+                variable syntax errors (first suggested by
+                qarl@ecl.wustl.edu (Karl Stiefvater)).
+            The help and c options.
+            The B, P, and Q options, which render PARBODY, PARPROTECT, and
+                PARQUOTE no longer necessary.  They are retained, though,
+                for compatibility and convenience.
+            The _b, _q, and _Q escape sequences for charset syntax.
+        Added the term "charset syntax".
+        Isolated the character set code in charset.c and charset.h.
+
 
 Compilation
 
@@ -169,7 +190,7 @@ Compilation
     will come in handy in the future.
 
     If your compiler warns you about a pointer to a constant being converted
-    to a pointer to a non-constant in line 510 of reformat.c, ignore it.
+    to a pointer to a non-constant in line 507 of reformat.c, ignore it.
     Your compiler (like mine) is in error.  What it thinks is a pointer to
     a constant is actually a pointer to a pointer to a constant, which is
     something quite different.  The conversion is legal, and I don't think a
@@ -186,10 +207,10 @@ Compilation
 
 
 Synopsis
-
-    par [version] [h[<hang>]] [p<prefix>] [s<suffix>] [w<width>] [d[<div>]]
-        [f[<fit>]] [g[<guess>]] [j[<just>]] [l[<last>]] [q[<quote>]]
-        [R[<Report>]] [t[<touch>]]
+    par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>] [h[<hang>]]
+        [p<prefix>] [s<suffix>] [w<width>] [c[<cap>]] [d[<div>]] [f[<fit>]]
+        [g[<guess>]] [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]]
+        [t[<touch>]]
 
     Things enclosed in [square brackets] are optional.  Things enclosed in
     <angle brackets> are parameters.
@@ -199,15 +220,15 @@ Description
 
     par is a filter which copies its input to its output, changing all white
     characters (except newlines) to spaces, and reformatting each paragraph.
-    Paragraphs are delimited by protected, blank, and vacant lines (see the
-    Terminology section for definitions), and optionally by indentation (see
-    the d option in the Options section).
+    Paragraphs are separated by protected, blank, and vacant lines (see
+    the Terminology section for definitions), and optionally delimited by
+    indentation (see the d option in the Options section).
 
     Each output paragraph is generated from the corresponding input
     paragraph as follows:
 
      1) An optional prefix and/or suffix is removed from each input line.
-     2) The remainder is divided into words (delimited by spaces).
+     2) The remainder is divided into words (separated by spaces).
      3) The words are joined into lines to make an eye-pleasing paragraph.
      4) The prefixes and suffixes are reattached.
 
@@ -218,6 +239,26 @@ Description
 Terminology
 
     Miscellaneous terms:
+
+        charset syntax
+            A way of representing a set of characters as a string.  The set
+            includes exactly those characters which appear in the string,
+            except that the underscore (_) is an escape character.  Whenever
+            it appears, it must begin one of the following escape sequences:
+
+                   __ = an underscore
+                   _s = a space
+                   _b = a backslash (\)
+                   _q = a single quote (')
+                   _Q = a double quote (")
+                   _A = all upper case letters
+                   _a = all lower case letters
+                   _0 = all decimal digits
+                 _xhh = the character represented by the two hexadecimal
+                        digits hh (which may be upper or lower case)
+
+            The NUL character must not appear in the string but it may be
+            included in the set with the _x00 sequence.
 
         error
             A condition which causes par to abort.  See the Diagnostics
@@ -310,8 +351,10 @@ Terminology
     Types of words:
 
         capitalized word
-            A word which contains at least one alphanumeric character, whose
-            first alphanumeric character is not a lower case letter.
+            If <cap> is 0, a capitalized word is one which contains at
+            least one alphanumeric character, whose first alphanumeric
+            character is not a lower case letter.  If <cap> is 1, every word
+            is considered a capitalized word.
 
         curious word
             A word which contains a terminal character <c> such that there
@@ -323,12 +366,33 @@ Options
 
     Any command line argument may begin with one minus sign (-) which is
     ignored.  Generally, more than one option may appear in a single command
-    line argument, but there is one exception:  The version option must have
-    a whole argument all to itself.
+    line argument, but there are exceptions:  The help, version, B, P, and Q
+    options must have whole arguments all to themselves.
+
+    help        Causes all remaining arguments to be ignored.  No input
+                is read.  A usage message is printed on the output briefly
+                describing the options used by par.
 
     version     Causes all remaining arguments to be ignored.  No input is
-                read.  "par 1.30" is printed on the output.  Of course, this
+                read.  "par 1.31" is printed on the output.  Of course, this
                 will change in future releases of Par.
+
+    B<op><set>  <op> is a single character, either an equal sign (=), a
+                plus sign (+), or a minus sign (-). <set> is a string using
+                charset syntax.  If <op> is an equal sign, the set of body
+                characters is set to the character set defined by <set>.  If
+                <op> is a plus/minus sign, the characters in the set defined
+                by <set> are added/removed to/from the existing set of body
+                characters defined by the PARBODY environment variable and
+                any previous B options.  It is okay to add characters that
+                are already in the set or to remove characters that are not
+                in the set.
+
+    P<op><set>  Just like the B option, except that it applies to the set of
+                protective characters.
+
+    Q<op><set>  Just like the B option, except that it applies to the set of
+                quote characters.
 
     All remaining options are used to set values of parameters.  Values set
     by command line options hold for all paragraphs.  Unset parameters are
@@ -366,16 +430,19 @@ Options
     w<width>    No line in the OP will contain more than <width> characters,
                 not including the trailing newlines.  Defaults to 72.
 
-    The remaining eight parameters, <div>, <fit>, <guess>, <just>, <last>,
-    <quote>, <Report>, and <touch>, may be set to either 0 or 1.  If the
-    number is absent in the option, the value 1 is inferred.
+    The remaining nine parameters, <cap>, <div>, <fit>, <guess>, <just>,
+    <last>, <quote>, <Report>, and <touch>, may be set to either 0 or 1.  If
+    the number is absent in the option, the value 1 is inferred.
 
-    d[<div>]    If <div> is 0, then each block becomes an IP.  If <div> is
-                1, then each block is subdivided into IPs as follows:  Let
-                <p> be the comprelen of the block.  Let a line's status be 1
-                if its (<p> + 1)st character is a space, 0 otherwise.  Every
-                line in the block whose status is the same as the status of
-                the first line will begin a new paragraph.  Defaults to 0.
+    c[<cap>]    If <cap> is 1, all words are considered capitalized.  This
+                currently affects only the application of the g option.
+
+    d[<div>]    If <div> is 0, each block becomes an IP.  If <div> is 1,
+                each block is subdivided into IPs as follows:  Let <p> be
+                the comprelen of the block.  Let a line's status be 1 if its
+                (<p> + 1)st character is a space, 0 otherwise.  Every line
+                in the block whose status is the same as the status of the
+                first line will begin a new paragraph.  Defaults to 0.
 
     f[<fit>]    If <fit> is 1 and <just> is 0, par will try to make the
                 lines in the OP as nearly the same length as possible, even
@@ -384,13 +451,13 @@ Options
 
     g[<guess>]  If <guess> is 1, then when par is choosing line breaks,
                 whenever it encounters a curious word followed by a
-                capitalized word, it take one of two special actions.  If
-                the two words are separated by a single space in the
+                capitalized word, it takes one of two special actions.
+                If the two words are separated by a single space in the
                 input, they will be merged into one word with an embedded
                 non-breaking space.  If the two words are separated by more
-                than one space, or by a line break, then par will insure
-                that they are separated by two spaces, or by a line break,
-                in the output.  Defaults to 0.
+                than one space, or by a line break, par will insure that
+                they are separated by two spaces, or by a line break, in the
+                output.  Defaults to 0.
 
     j[<just>]   If <just> is 1, par justifies the OP, inserting spaces
                 between words so that all lines in the OP have length
@@ -411,7 +478,7 @@ Options
                 lines.  <quote> also affects the default value of <prefix>.
                 Defaults to 0.  (See also the p option.)
 
-    R[<Report>] If <Report> is 1, then it will be considered an error for an
+    R[<Report>] If <Report> is 1, it will be considered an error for an
                 input word to contain more than <L> = (<width> - <prefix> -
                 <suffix>) characters.  Otherwise, such words will be chopped
                 after each <L>th character into shorter words.  Defaults
@@ -420,10 +487,10 @@ Options
 
     t[<touch>]  Has no effect if <suffix> is 0 or <just> is 1.  Otherwise,
                 if <touch> is 0, all lines in the OP have length <width>.
-                If <touch> is 1, then the length of the lines is decreased
-                until the suffixes touch the body of the OP.  Defaults to
-                the logical OR of <fit> and <last>.  (See also the s, j, w,
-                f, and l options.)
+                If <touch> is 1, the length of the lines is decreased until
+                the suffixes touch the body of the OP.  Defaults to the
+                logical OR of <fit> and <last>.  (See also the s, j, w, f,
+                and l options.)
 
     If the value of any parameter is set more than once, the last value is
     used.  When unset parameters are assigned default values, <hang> and
@@ -435,35 +502,25 @@ Options
 
 Environment
 
-    PARBODY     All and only the characters appearing in the value of
-                PARBODY count as body characters (which are used for
-                determining comprelens and comsuflens).  The underscore is
-                an escape character, which may begin the following escape
-                sequences:
+    PARBODY     Determines the initial set of body characters (which are
+                used for determining comprelens and comsuflens), using
+                charset syntax.  If PARBODY is not set, the set of body
+                characters is initially empty.  A good value for PARBODY
+                might be "_A_a.", but it depends on the application.
 
-                   __ = an underscore
-                   _s = a space
-                   _A = all upper case letters
-                   _a = all lower case letters
-                   _0 = all decimal digits
-                 _xhh = the character represented by the two hexadecimal
-                        digits hh (which may be upper or lower case)
+    PARINIT     If set, par will read command line arguments from PARINIT
+                before it reads them from the command line.  Within
+                the value of PARINIT, arguments are separated by white
+                characters.
 
-                If PARBODY is not set, there are no body characters.
+    PARPROTECT  Determines the set of protective characters, using charset
+                syntax.  If PARPROTECT is not set, the set of protective
+                characters is initially empty.
 
-                A good value for PARBODY might be "_A_a.", but it depends on
-                the application.
-
-    PARINIT     If set, par will read command line options from PARINIT
-                before it reads them from the command line.
-
-    PARPROTECT  Determines the set of protective characters, using the same
-                syntax as PARBODY.  If PARPROTECT is not set, there are no
-                protective characters.
-
-    PARQUOTE    Determines the set of quote characters, using the same
-                syntax as PARBODY.  If PARQUOTE is not set, then the quote
-                characters are the greater-than sign and the space.
+    PARQUOTE    Determines the set of quote characters, using charset
+                syntax.  If PARQUOTE is not set, the set of quote characters
+                initially contains only the greater-than sign (>) and the
+                space.
 
     If a NUL character appears in the value of an environment variable, it
     and the rest of the string will not be seen by par.
@@ -473,10 +530,10 @@ Details
 
     Lines are terminated by newline characters, but the newlines are not
     considered to be included in the lines.  If the last character of the
-    input is a non-newline, then a newline will be inferred immediately
-    after it (but if the input is empty, no newline will be inferred; the
-    number of input lines will be 0).  Thus, the input can always be viewed
-    as a sequence of lines.
+    input is a non-newline, a newline will be inferred immediately after
+    it (but if the input is empty, no newline will be inferred; the number
+    of input lines will be 0).  Thus, the input can always be viewed as a
+    sequence of lines.
 
     Protected lines are copied unchanged from the input to the output.  All
     other input lines, as they are read, have any NUL characters removed,
@@ -498,15 +555,15 @@ Details
     line to contain fewer than <prefix> + <suffix> characters.
 
     The remaining text is treated as a sequence of characters, not lines.
-    The text is broken into words, which are delimited by spaces.  That is,
-    a word is a maximal sub-sequence of non-spaces.  If <guess> is 1, then
-    some words might be merged (see g in the Options section).  The first
-    word includes any spaces that preceed it on the same line.
+    The text is broken into words, which are separated by spaces.  That is,
+    a word is a maximal sub-sequence of non-spaces.  If <guess> is 1, some
+    words might be merged (see g in the Options section).  The first word
+    includes any spaces that preceed it on the same line.
 
     Let <L> = <width> - <prefix> - <suffix>.
 
-    If <Report> is 0, then some words may get chopped up at this point (see
-    R in the Options section).
+    If <Report> is 0, some words may get chopped up at this point (see R in
+    the Options section).
 
     The words are reassembled, preserving their order, into lines.  If
     <just> is 0, adjacent words within a line are separated by a single
@@ -526,17 +583,17 @@ Details
             between <target> and the lengths of the lines is as small as
             possible, subject to properties 1, 2, and 3.
 
-        If <last> is 0, then the last line does not count as a line for the
+        If <last> is 0, the last line does not count as a line for the
         purposes of properties 2, 3, and 4 above.
 
-        If all the words fit on a single line, then the properties as worded
+        If all the words fit on a single line, the properties as worded
         above don't make much sense.  In that case, no line breaks are
         inserted.
 
-    If <just> is 1, then adjacent words within a line are separated by one
-    space (or sometimes two if <guess> is 1) plus zero or more extra spaces.
-    The value of <fit> is disregarded, and line breaks are chosen so that
-    the paragraph satisfies the following properties:
+    If <just> is 1, adjacent words within a line are separated by one space
+    (or sometimes two if <guess> is 1) plus zero or more extra spaces.  The
+    value of <fit> is disregarded, and line breaks are chosen so that the
+    paragraph satisfies the following properties:
 
          1) Every line contains exactly <L> characters.
 
@@ -547,7 +604,7 @@ Details
          3) The sum of the squares of the lengths of the inter-word gaps is
             as small as possible, subject to properties 1 and 2.
 
-        If <last> is 0, then the last line does not count as a line for the
+        If <last> is 0, the last line does not count as a line for the
         purposes of property 1, and it does not require or contain any extra
         spaces.
 
@@ -559,37 +616,37 @@ Details
         paragraph cannot be justified, it is considered an error.
 
     If the number of lines in the resulting paragraph is less than <hang>,
-    then empty lines are added at the end to bring the number of lines up to
+    empty lines are added at the end to bring the number of lines up to
     <hang>.
 
-    If <just> is 0 and <touch> is 1, then <L> is changed to be the length of
-    the longest line.
+    If <just> is 0 and <touch> is 1, <L> is changed to be the length of the
+    longest line.
 
-    If <suffix> is not 0, then each line is padded at the end with spaces to
+    If <suffix> is not 0, each line is padded at the end with spaces to
     bring its length up to <L>.
 
     To each line is prepended <prefix> characters.  Let <n> be the number of
     lines in the IP.  The characters which are prepended to the <i>th line
     are chosen as follows:
 
-     1) If <i> <= <n>, then the characters are copied from the ones that
-        were removed from the beginning of the <n>th input line.
+     1) If <i> <= <n>, the characters are copied from the ones that were
+        removed from the beginning of the <n>th input line.
 
-     2) If <i> > <n> > <hang>, then the characters are copied from the ones
-        that were removed from the beginning of the last input line.
+     2) If <i> > <n> > <hang>, the characters are copied from the ones that
+        were removed from the beginning of the last input line.
 
-     3) If <i> > <n> and <n> <= <hang>, then the characters are all spaces.
+     3) If <i> > <n> and <n> <= <hang>, the characters are all spaces.
 
     Then to each line is appended <suffix> characters.  The characters which
     are appended to the <i>th line are chosen as follows:
 
-     1) If <i> <= <n>, then the characters are copied from the ones that
-        were removed from the end of the nth input line.
+     1) If <i> <= <n>, the characters are copied from the ones that were
+        removed from the end of the nth input line.
 
-     2) If <i> > <n> > 0, then the characters are copied from the ones that
-        were removed from the end of the last input line.
+     2) If <i> > <n> > 0, the characters are copied from the ones that were
+        removed from the end of the last input line.
 
-     3) If <n> = 0, then the characters are all spaces.
+     3) If <n> = 0, the characters are all spaces.
 
     Finally, the lines are printed to the output as the OP.
 
@@ -598,12 +655,14 @@ Diagnostics
 
     If there are no errors, par returns EXIT_SUCCESS (see <stdlib.h>).
 
-    If there is an error, then an error message will be printed to the
-    output, and par will return EXIT_FAILURE.  If the error is local to a
-    single paragraph, then the preceeding paragraphs will have been output
-    before the error was detected.  Line numbers in error messages are local
-    to the IP in which the error occurred.  All error messages begin with
-    "par error:" on a line by itself.
+    If there is an error, an error message will be printed to the output,
+    and par will return EXIT_FAILURE.  If the error is local to a single
+    paragraph, the preceeding paragraphs will have been output before
+    the error was detected.  Line numbers in error messages are local to
+    the IP in which the error occurred.  All error messages begin with
+    "par error:" on a line by itself.  Error messages concerning command
+    line or environment variable syntax are accompanied by the same usage
+    message that the help option produces.
 
     Of course, trying to print an error message would be futile if an error
     resulted from an output function, so par doesn't bother doing any error
@@ -634,11 +693,11 @@ Examples
         We the people of the United
         States, in order to form a more
         perfect union, establish
-        establish justice, insure
-        domestic tranquility, provide
-        for the common defense, promote
-        the general welfare, and secure
-        the blessing of liberty to
+        justice, insure domestic
+        tranquility, provide for the
+        common defense, promote the
+        general welfare, and secure the
+        blessing of liberty to
         ourselves and our posterity, do
         ordain and establish the
         Constitution of the United
@@ -901,13 +960,19 @@ Examples
 
         I sure hope there's still room
         in Dr. Jones' section of archaeology.
-        I've heard he's the best.
+        I've heard he's the bestest.  [sic]
 
     After "par 50g":
 
         I sure hope there's still room in
         Dr. Jones' section of archaeology.  I've
-        heard he's the best.
+        heard he's the bestest. [sic]
+
+    Or after "par 50gc":
+
+        I sure hope there's still room in
+        Dr. Jones' section of archaeology.  I've
+        heard he's the bestest.  [sic]
 
 
 Limitations

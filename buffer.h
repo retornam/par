@@ -1,6 +1,6 @@
 /*********************/
 /* buffer.h          */
-/* for Par 1.30      */
+/* for Par 1.31      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -17,45 +17,42 @@
 #include <stddef.h>
 
 
-struct buffer;
+typedef struct buffer buffer;
 
 
-struct buffer *newbuffer(size_t itemsize, errmsg_t errmsg);
+buffer *newbuffer(size_t itemsize, errmsg_t errmsg);
 
-  /* newbuffer(itemsize,errmsg) returns a pointer to a */
-  /* new empty struct buffer which holds items of size */
-  /* itemsize.  Any struct buffer *buf passed to any   */
-  /* function declared in this header must have been   */
-  /* obtained from this function.  itemsize must not   */
-  /* be 0.  Returns NULL on failure.                   */
+  /* newbuffer(itemsize,errmsg) returns a pointer to a    */
+  /* new empty buffer which holds items of size itemsize. */
+  /* itemsize must not be 0.  Returns NULL on failure.    */
 
 
-void freebuffer(struct buffer *buf);
+void freebuffer(buffer *buf);
 
   /* freebuffer(buf) frees the memory associated with */
   /* *buf.  buf may not be used after this call.      */
 
 
-void clearbuffer(struct buffer *buf);
+void clearbuffer(buffer *buf);
 
   /* clearbuffer(buf) removes  */
   /* all items from *buf, but  */
   /* does not free any memory. */
 
 
-void additem(struct buffer *buf, const void *item, errmsg_t errmsg);
+void additem(buffer *buf, const void *item, errmsg_t errmsg);
 
   /* additem(buf,item,errmsg) copies *item to the end of     */
   /* *buf.  item must point to an object of the proper size  */
   /* for *buf.  If additem() fails, *buf will be unaffected. */
 
 
-int numitems(struct buffer *buf);
+int numitems(buffer *buf);
 
   /* numitems(buf) returns the number of items in *buf. */
 
 
-void *copyitems(struct buffer *buf, errmsg_t errmsg);
+void *copyitems(buffer *buf, errmsg_t errmsg);
 
   /* copyitems(buf,errmsg) returns an array of objects of the proper size */
   /* for *buf, one for each item in *buf, or (void *) 0 if there are no   */
@@ -64,16 +61,17 @@ void *copyitems(struct buffer *buf, errmsg_t errmsg);
   /* be freed with free().  Returns NULL on failure.                      */
 
 
-void *nextitem(struct buffer *buf);
+void *nextitem(buffer *buf);
 
-  /* When buf was created by newbuffer, a pointer associated with buf   */
-  /* was initialized to point at the first slot in buf.  If there is an */
-  /* item in this slot, nextitem(buf) advances the pointer to the next  */
-  /* slot and returns the old value.  If there is no item in the slot,  */
-  /* nextitem(buf) leaves the pointer where it is and returns NULL.     */
+  /* When buf was created by newbuffer, a pointer associated with buf  */
+  /* was initialized to point at the first slot in *buf.  If there is  */
+  /* an item in the slot currently pointed at, nextitem(buf) advances  */
+  /* the pointer to the next slot and returns the old value.  If there */
+  /* is no item in the slot, nextitem(buf) leaves the pointer where it */
+  /* is and returns NULL.                                              */
 
 
-void rewindbuffer(struct buffer *buf);
+void rewindbuffer(buffer *buf);
 
-  /* rewindbuffer(buf) resets the pointer used by  */
-  /* nextitem() to point at the first slot in buf. */
+  /* rewindbuffer(buf) resets the pointer used by   */
+  /* nextitem() to point at the first slot in *buf. */

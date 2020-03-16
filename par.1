@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.30      *
+.\"* for Par 1.31      *
 .\"* Copyright 1993 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "18 August 1993" "Par 1.30" "USER COMMANDS"
+.TH par 1 "7 September 1993" "Par 1.31" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -19,11 +19,16 @@ par \- filter for reformatting paragraphs
 .TP .5i
 .B par
 .na
+.OP help
 .OP version
+.OP B opset
+.OP P opset
+.OP Q opset
 .OP h \*Ohang\*C
 .OP p prefix
 .OP s suffix
 .OP w width
+.OP c \*Ocap\*C
 .OP d \*Odiv\*C
 .OP f \*Ofit\*C
 .OP g \*Oguess\*C
@@ -48,10 +53,10 @@ par \- filter for reformatting paragraphs
 is a filter which copies its input to its output,
 changing all white characters (except newlines) to
 spaces, and reformatting each paragraph.  Paragraphs are
-delimited by protected, blank, and vacant lines, (see the
+separated by protected, blank, and vacant lines, (see the
 .SM TERMINOLOGY
-section for definitions), and
-optionally by indentation (see the
+section for definitions), and optionally
+delimited by indentation (see the
 .B d
 option in the
 .SM OPTIONS
@@ -64,7 +69,7 @@ corresponding input paragraph as follows:
 .IT 1) An optional prefix and/or suffix
 is removed from each input line.
 .IT 2) The remainder is divided into
-words (delimited by spaces).
+words (separated by spaces).
 .IT 3) The words are joined into lines
 to make an eye-pleasing paragraph.
 .IT 4) The prefixes and suffixes are reattached.
@@ -76,6 +81,29 @@ them so that they all end in the same column.
 .LP
 Miscellaneous terms:
 .RS
+.IP "charset syntax"
+A way of representing a set of characters as a string.
+The set includes exactly those characters which
+appear in the string, except that the underscore (_)
+is an escape character.  Whenever it appears, it
+must begin one of the following escape sequences:
+.RS 1.5i
+.IT __\ = an underscore
+.IT _s\ = a space
+.IT _b\ = a backslash (\e)
+.IT _q\ = a single quote (')
+.IT _Q\ = a double quote (")
+.IT _A\ = all upper case letters
+.IT _a\ = all lower case letters
+.IT _0\ = all decimal digits
+.IT _x\fIhh\fP\ = the character represented
+by the two hexadecimal digits
+.I hh
+(which may be upper or lower case)
+.RE
+.IP
+The NUL character must not appear in the string, but
+it may be included in the set with the _x00 sequence.
 .IP error
 A condition which causes
 .B par
@@ -202,16 +230,21 @@ lines and/or the beginning/end of the segment.
 Types of words:
 .RS
 .IP "capitalized word"
-A word which contains at least one alphanumeric
-character, whose first alphanumeric
-character is not a lower case letter.
+If
+.I cap
+is 0, a capitalized word is one which contains
+at least one alphanumeric character, whose first
+alphanumeric character is not a lower case letter.  If
+.I cap
+is 1, every word is considered a capitalized word.
 .IP "curious word"
 A word which contains a terminal character
 .I c
 such that there are no alphanumeric
 characters in the word after
 .IR c ,
-but there is at least one alphanumeric character in the word before
+but there is at least one alphanumeric
+character in the word before
 .IR c .
 .RE
 .SH OPTIONS
@@ -219,14 +252,58 @@ but there is at least one alphanumeric character in the word before
 Any command line argument may begin with one minus
 sign (\-) which is ignored.  Generally, more
 than one option may appear in a single command
-line argument, but there is one exception:  The
-.B version
-option must have a whole argument all to itself.
+line argument, but there are exceptions:  The
+.BR help ,
+.BR version ,
+.BR B ,
+.BR P ,
+and
+.B Q
+options must have a whole arguments all to themselves.
 .TP 1i
+.B help
+Causes all remaining arguments to be ignored.  No
+input is read.  A usage message is printed on the
+output briefly describing the options used by
+.BR par .
+.TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.30\*U is printed on the output.  Of
+is read.  \*Qpar 1.31\*U is printed on the output.  Of
 course, this will change in future releases of Par.
+.TP
+.BI B opset
+.I op
+is a single character, either an equal sign
+(=), a plus sign (+), or a minus sign (-).
+.I set
+is a string using charset syntax.  If
+.I op
+is an equal sign, the set of body characters
+is set to the character set defined by
+.IR set .
+If
+.I op
+is a plus/minus sign, the characters in the set defined by
+.I set
+are added/removed to/from the existing
+set of body characters defined by the
+.SM PARBODY
+environment variable and any previous B options.  It
+is okay to add characters that are already in the
+set or to remove characters that are not in the set.
+.TP
+.BI P opset
+Just like the
+.B B
+option, except that it applies to
+the set of protective characters.
+.TP
+.BI Q opset
+Just like the
+.B B
+option, except that it applies
+to the set of quote characters.
 .LP
 All remaining options are used to set values of
 parameters.  Values set by command line options hold
@@ -318,12 +395,20 @@ and
 may be set to either 0 or 1.  If the number is
 absent in the option, the value 1 is inferred.
 .TP 1i
+.BI c\fR[ cap\fR]
+If
+.I cap
+is 1, all words are considered capitalized.  This
+currently affects only the application of the
+.B g
+option.
+.TP
 .BI d\fR[ div\fR]
 If
 .I div
-is 0, then each block becames an IP.  If
+is 0, each block becames an IP.  If
 .I div
-is 1, then each block is subdivided into IPs as follows:  Let
+is 1, each block is subdivided into IPs as follows:  Let
 .I p
 be the comprelen of the block.
 Let a line's status be 1 if its
@@ -351,11 +436,11 @@ If
 is 1, then when
 .B par
 is choosing line breaks, whenever it encounters a curious
-word followed by a capitalized word, it take one of two
-special actions.  If the two words are separated by a single
-space in the input, they will be merged into one word with
-an embedded non-breaking space.  If the two words are
-separated by more than one space, or by a line break, then
+word followed by a capitalized word, it takes one of two
+special actions.  If the two words are separated by a
+single space in the input, they will be merged into one
+word with an embedded non-breaking space.  If the two words
+are separated by more than one space, or by a line break,
 .B par
 will insure that they are separated by two spaces,
 or by a line break, in the output.  Defaults to 0.
@@ -410,7 +495,7 @@ option.)
 .BI R\fR[ Report\fR]
 If
 .I Report
-is 1, then it will be considered an error
+is 1, it will be considered an error
 for an input word to contain more than
 .IR L \ =
 .RI ( width \ -
@@ -437,7 +522,7 @@ is 0, all lines in the OP have length
 .IR width .
 If
 .I touch
-is 1, then the length of the lines is decreased until the
+is 1, the length of the lines is decreased until the
 suffixes touch the body of the OP.  Defaults to the logical
 .SM OR
 of
@@ -478,32 +563,14 @@ It is an error if
 .SH ENVIRONMENT
 .TP 1i
 .SM PARBODY
-All and only the characters appearing in the value of
+Determines the initial set of body characters
+(which are used for determining comprelens
+and comsuflens), using charset syntax.  If
 .SM PARBODY
-count as body characters (which are used for determining
-comprelens and comsuflens).  The underscore is an escape
-character, which may begin the following escape sequences:
-.RS 2i
-.IT __\ = an underscore
-.IT _s\ = a space
-.IT _A\ = all upper case letters
-.IT _a\ = all lower case letters
-.IT _0\ = all decimal digits
-.IT _x\fIhh\fP\ = the character represented
-by the two hexadecimal digits
-.I hh
-(which may be upper or lower case)
-.RE
-.RS 1i
-.LP
-If
-.SM PARBODY
-is not set, there are no body characters.
-.LP
-A good value for
+is not set, the set of body characters
+is initially empty.  A good value for
 .SM PARBODY
 might be \*Q_A_a.\*U, but it depends on the application.
-.RE
 .TP
 .SM PARINIT
 If set,
@@ -511,22 +578,23 @@ If set,
 will read command line options from
 .SM PARINIT
 before it reads them from the command line.
+Within the value of
+.SM PARINIT\s0,
+arguments are separated by white characters.
 .TP
 .SM PARPROTECT
 Determines the set of protective
-characters, using the same syntax as
-.SM PARBODY\s0.
-If
+characters, using charset syntax.  If
 .SM PARPROTECT
-is not set, there are no protective characters.
+is not set, the set of protective
+characters is initially empty.
 .TP
 .SM PARQUOTE
-Determines the set of quote characters, using the same syntax as
-.SM PARBODY\s0.
-If
+Determines the set of quote
+characters, using charset syntax.  If
 .SM PARQUOTE
-is not set, then the quote characters
-are the greater-than sign and the space.
+is not set, the set of quote characters initially
+contains only the greater-than sign (>) and the space.
 .LP
 If a
 .SM NUL
@@ -538,10 +606,10 @@ it and the rest of the string will not be seen by
 Lines are terminated by newline characters, but the
 newlines are not considered to be included in the lines.
 If the last character of the input is a non-newline,
-then a newline will be inferred immediately after
-it (but if the input is empty, no newline will be
-inferred; the number of input lines will be 0).  Thus,
-the input can always be viewed as a sequence of lines.
+a newline will be inferred immediately after it (but
+if the input is empty, no newline will be inferred;
+the number of input lines will be 0).  Thus, the
+input can always be viewed as a sequence of lines.
 .LP
 Protected lines are copied unchanged from the input to the
 output.  All other input lines, as they are read, have any
@@ -582,11 +650,10 @@ characters.
 .LP
 The remaining text is treated as a sequence of
 characters, not lines.  The text is broken into
-words, which are delimited by spaces.  That is, a
-word
-is a maximal sub-sequence of non-spaces.  If
+words, which are separated by spaces.  That is, a
+word is a maximal sub-sequence of non-spaces.  If
 .I guess
-is 1, then some words might be merged (see
+is 1, some words might be merged (see
 .B g
 in the
 .SM OPTIONS
@@ -604,7 +671,7 @@ Let
 .LP
 If
 .I Report
-is 0, then some words may get chopped up at this point (see
+is 0, some words may get chopped up at this point (see
 .B R
 in the
 .SM
@@ -646,17 +713,17 @@ possible, subject to properties 1, 2, and 3.
 .LP
 If
 .I last
-is 0, then the last line does not count as a line
-for the purposes of properties 2, 3, and 4 above.
+is 0, the last line does not count as a line for
+the purposes of properties 2, 3, and 4 above.
 .LP
-If all the words fit on a single line, then
-the properties as worded above don't make much
+If all the words fit on a single line, the
+properties as worded above don't make much
 sense.  In that case, no line breaks are inserted.
 .RE
 .LP
 If
 .I just
-is 1, then adjacent words within a line are
+is 1, adjacent words within a line are
 separated by one space (or sometimes two if
 .I guess
 is 1) plus zero or more extra spaces.  The value of
@@ -678,9 +745,9 @@ possible, subject to properties 1 and 2.
 .LP
 If
 .I last
-is 0, then the last line does not count as a
-line for the purposes of property 1, and it
-does not require or contain any extra spaces.
+is 0, the last line does not count as a line
+for the purposes of property 1, and it does
+not require or contain any extra spaces.
 .LP
 Extra spaces are distributed as uniformly as
 possible among the inter-word gaps in each line.
@@ -694,7 +761,7 @@ cannot be justified, it is considered an error.
 If the number of lines in the
 resulting paragraph is less than
 .IR hang ,
-then empty lines are added at the end
+empty lines are added at the end
 to bring the number of lines up to
 .IR hang .
 .LP
@@ -702,14 +769,14 @@ If
 .I just
 is 0 and
 .I touch
-is 1, then
+is 1,
 .I L
 is changed to be the length of the longest line.
 .LP
 If
 .I suffix
-is not 0, then each line is padded at the
-end with spaces to bring its length up to
+is not 0, each line is padded at the end
+with spaces to bring its length up to
 .IR L .
 .LP
 To each line is prepended
@@ -726,7 +793,7 @@ line are chosen as follows:
 .I i
 <=
 .IR n ,
-then the characters are copied from the ones
+the characters are copied from the ones
 that were removed from the beginning of the
 .IR n th
 input line.
@@ -736,7 +803,7 @@ input line.
 .I n
 >
 .IR hang ,
-then the characters are copied from the ones that were
+the characters are copied from the ones that were
 removed from the beginning of the last input line.
 .IT 3) If
 .I i
@@ -746,7 +813,7 @@ and
 .I n
 <=
 .IR hang ,
-then the characters are all spaces.
+the characters are all spaces.
 .RE
 .LP
 Then to each line is appended
@@ -760,19 +827,19 @@ line are chosen as follows:
 .I i
 <=
 .IR n ,
-then the characters are copied from the
-ones that were removed from the end of the
+the characters are copied from the ones
+that were removed from the end of the
 .IR n th
 input line.
 .IT 2) If
 .I i
 >
 .I n
-> 0, then the characters are copied from the ones that
+> 0, the characters are copied from the ones that
 were removed from the end of the last input line.
 .IT 3) If
 .I n
-= 0, then the characters are all spaces.
+= 0, the characters are all spaces.
 .RE
 .LP
 Finally, the lines are printed to the output as the OP.
@@ -785,16 +852,19 @@ returns
 (see
 .BR <stdlib.h> ).
 .LP
-If there is an error, then an error
-message will be printed to the output, and
+If there is an error, an error message
+will be printed to the output, and
 .B par
 will return
 .SM EXIT_FAILURE\s0\.
-If the error is local to a single paragraph, then the
-preceeding paragraphs will have been output before the
-error was detected.  Line numbers in error messages are
-local to the IP in which the error occurred.  All error
-messages begin with \*Qpar error:\*U on a line by itself.
+If the error is local to a single paragraph, the preceeding
+paragraphs will have been output before the error
+was detected.  Line numbers in error messages are
+local to the IP in which the error occurred.  All
+error messages begin with \*Qpar\ error:\*U on a line
+by itself.  Error messages concerning command line
+or environment variable syntax are accompanied by
+the same usage message that the help option produces.
 .LP
 Of course, trying to print an error message would be
 futile if an error resulted from an output function, so
@@ -847,11 +917,11 @@ After a greedy algorithm with width = 39:
         We the people of the United
         States, in order to form a more
         perfect union, establish
-        establish justice, insure
-        domestic tranquility, provide
-        for the common defense, promote
-        the general welfare, and secure
-        the blessing of liberty to
+        justice, insure domestic
+        tranquility, provide for the
+        common defense, promote the
+        general welfare, and secure the
+        blessing of liberty to
         ourselves and our posterity, do
         ordain and establish the
         Constitution of the United
@@ -1152,7 +1222,7 @@ Before:
 .VS
         I sure hope there's still room
         in Dr. Jones' section of archaeology.
-        I've heard he's the best.
+        I've heard he's the bestest.  [sic]
 .VE
 .LP
 After
@@ -1160,7 +1230,15 @@ After
 .VS
         I sure hope there's still room in
         Dr. Jones' section of archaeology.  I've
-        heard he's the best.
+        heard he's the bestest. [sic]
+.VE
+.LP
+Or after
+.CM "par 50gc"
+.VS
+        I sure hope there's still room in
+        Dr. Jones' section of archaeology.  I've
+        heard he's the bestest.  [sic]
 .VE
 .SH SEE ALSO
 .LP
