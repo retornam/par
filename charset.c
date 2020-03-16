@@ -1,6 +1,6 @@
 /*********************/
 /* charset.c         */
-/* for Par 1.40      */
+/* for Par 1.41      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -81,7 +81,7 @@ static int hexdigtoint(char c)
 charset *parsecharset(const char *str, errmsg_t errmsg)
 {
   charset *cset = NULL;
-  struct buffer *cbuf = NULL;
+  buffer *cbuf = NULL;
   const char *p, * const singleescapes = "_sbqQx";
   int hex1, hex2;
   char ch;

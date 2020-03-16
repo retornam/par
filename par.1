@@ -1,13 +1,13 @@
 .\"*********************
 .\"* par.1             *
-.\"* for Par 1.40      *
+.\"* for Par 1.41      *
 .\"* Copyright 1993 by *
 .\"* Adam M. Costello  *
 .\"*********************
 .\"
 .\" This is nroff -man (or troff -man) code.
 .\"
-.TH par 1 "10 October 1993" "Par 1.40" "USER COMMANDS"
+.TH par 1 "31 October 1993" "Par 1.41" "USER COMMANDS"
 .SH NAME
 par \- filter for reformatting paragraphs
 .SH SYNOPSIS
@@ -31,6 +31,7 @@ par \- filter for reformatting paragraphs
 .OP w \*Owidth\*C
 .OP c \*Ocap\*C
 .OP d \*Odiv\*C
+.OP E \*OErr\*C
 .OP e \*Oexpel\*C
 .OP f \*Ofit\*C
 .OP g \*Oguess\*C
@@ -55,7 +56,7 @@ par \- filter for reformatting paragraphs
 is a filter which copies its input to its output, changing
 all white characters (except newlines) to spaces, and
 reformatting each paragraph.  Paragraphs are separated
-by protected, blank, and bodiless lines, (see the
+by protected, blank, and bodiless lines (see the
 .SM TERMINOLOGY
 section for definitions), and optionally
 delimited by indentation (see the
@@ -213,6 +214,20 @@ prefixes (suffixes) of the bodiless lines just above and
 below the block, if the segment containing the block
 has any bodiless lines; otherwise, 0.  (See below for
 the definitions of block, segment, and bodiless line.)
+.IP "augmented fallback prelen"
+Let
+.I fp
+be the fallback prelen of an IP.  If the
+IP contains more than one line, or if
+.I quote
+is 0, then the augmented fallback prelen of the IP is simply
+.IR fp .
+Otherwise, it is
+.I fp
+plus the number of quote characters
+immediately following the first
+.I fp
+characters of the line.
 .IP quoteprefix
 The quoteprefix of a line is the longest string of quote
 characters appearing at the beginning of the line, after
@@ -270,7 +285,7 @@ Only blank and vacant lines may be superfluous.  If
 contiguous vacant lines lie at the beginning or end
 of a segment, they are all superfluous.  But if they
 lie between two non-vacant lines within a segment,
-then all are superfluous except one--the one which
+then all are superfluous except one\(emthe one which
 contains the fewest non-spaces.  In case of a tie,
 the first of the tied lines is chosen.  Similarly, if
 contiguous blank lines lie outside of any segments
@@ -337,7 +352,7 @@ output briefly describing the options used by
 .TP
 .B version
 Causes all remaining arguments to be ignored.  No input
-is read.  \*Qpar 1.40\*U is printed on the output.  Of
+is read.  \*Qpar 1.41\*U is printed on the output.  Of
 course, this will change in future releases of Par.
 .TP
 .BI B opset
@@ -421,12 +436,8 @@ of the IP.  If there are more than
 lines in the IP, the default value is the comprelen
 of all the lines in the IP except the first
 .I hang
-of them.  Otherwise, the default value is
-the fallback prelen of the IP, plus, if
-.I quote
-is 1, the number of quote characters
-immediately following the first fallback prelen
-characters of the last line of the IP.  If the
+of them.  Otherwise, the default value is the
+augmented fallback prelen of the IP.  If the
 .B p
 option is given without a number,
 .I prefix
@@ -481,9 +492,10 @@ newlines.  Defaults to 72.  If the
 .B w
 option is given without a number, the value 79 is inferred.
 .LP
-The remaining eleven parameters,
+The remaining twelve parameters,
 .IR cap ,
 .IR div ,
+.IR Err ,
 .IR expel ,
 .IR fit ,
 .IR guess ,
@@ -518,6 +530,16 @@ Let a line's status be 1 if its
 character is a space, 0 otherwise.  Every line in the
 block whose status is the same as the status of the
 first line will begin a new paragraph.  Defaults to 0.
+.TP
+.BI E\fR[ Err\fR]
+If
+.I Err
+is 1, messages to the user (caused by the
+.B help
+and
+.B version
+options, or by errors) are sent to the error stream
+instead of the output stream.  Defaults to 0.
 .TP
 .BI e\fR[ expel\fR]
 If
@@ -925,8 +947,8 @@ To each line is prepended
 characters.  Let
 .I n
 be the number of lines in the IP, let
-.I fp
-be the fallback prelen of the IP, and let
+.I afp
+be the augmented fallback prelen of the IP, and let
 .I fs
 be the fallback suflen of the IP.  The
 characters which are prepended to the
@@ -959,7 +981,7 @@ and
 <=
 .IR hang ,
 the first
-.RI min( fp , prefix )
+.RI min( afp , prefix )
 of the characters are copied from the ones
 that were removed from the beginning of the
 last input line, and the rest are all spaces.

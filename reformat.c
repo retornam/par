@@ -1,6 +1,6 @@
 /*********************/
 /* reformat.c        */
-/* for Par 1.40      */
+/* for Par 1.41      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -286,7 +286,7 @@ static void justbreaks(
 
 
 char **reformat(
-  const char * const *inlines, const char * const *endline, int fp, int fs,
+  const char * const *inlines, const char * const *endline, int afp, int fs,
   int hang, int prefix, int suffix, int width, int cap, int fit, int guess,
   int just, int last, int Report, int touch, errmsg_t errmsg
 )
@@ -471,9 +471,9 @@ char **reformat(
     if      (numout <= numin) memcpy(q1, inlines[numout - 1], prefix);
     else if (numin  >  hang ) memcpy(q1, endline[-1],         prefix);
     else {
-      if (fp > prefix) fp = prefix;
-      memcpy(q1, endline[-1], fp);
-      q1 += fp;
+      if (afp > prefix) afp = prefix;
+      memcpy(q1, endline[-1], afp);
+      q1 += afp;
       while (q1 < q2) *q1++ = ' ';
     }
     q1 = q2;

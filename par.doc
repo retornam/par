@@ -1,12 +1,12 @@
   *********************
   * par.doc           *
-  * for Par 1.40      *
+  * for Par 1.41      *
   * Copyright 1993 by *
   * Adam M. Costello  *
   *********************
 
 
-    Par 1.40 is a package containing:
+    Par 1.41 is a package containing:
 
        + This doc file.
        + A man page based on this doc file.
@@ -18,7 +18,6 @@ Contents
     Contents
     File List
     Rights and Responsibilities
-    Release Notes
     Compilation
     Synopsis
     Description
@@ -35,7 +34,7 @@ Contents
 
 File List
 
-    The Par 1.40 package is always distributed with at least the following
+    The Par 1.41 package is always distributed with at least the following
     files:
 
         buffer.c
@@ -50,6 +49,7 @@ File List
         protoMakefile
         reformat.c
         reformat.h
+        releasenotes
 
     Each file is a text file which identifies itself on the second line, and
     identifies the version of Par to which it belongs on the third line,
@@ -81,164 +81,22 @@ Rights and Responsibilities
     users send me suggestions for changes so that I can incorporate them
     into future versions of Par.  See the Bugs section for my addresses.
 
+    All official versions of Par will have version numbers that fit the
+    pattern "<digits>.<digits>".  Those who distribute patches should, as a
+    courtesy, make sure that the patch alters all instances of the version
+    number (except in the releasenotes file) to something that doesn't fit
+    the pattern, to avoid confusion between official versions and patched
+    versions.
+
     Though I have tried to make sure that Par is free of bugs, I make no
     guarantees about its soundness.  Therefore, I am not responsible for any
     damage resulting from the use of these files.
 
 
-Release Notes
-
-    Each entry below describes changes since the previous version.
-
-    Par 1.00 released 25 July 1993
-        The first release.
-
-    Par 1.10 released 2 August 1993
-        Fixed the following bugs:
-            In reformat.c I used sprintf() but forgot to #include <stdio.h>.
-            I forgot to verify that <width> > <prefix> + <suffix>.
-            The first word of a paragraph was expanded to include initial
-            white characters, not just spaces, contrary to par.doc.
-            Some invalid options were not complained about.
-            NUL characters in the input were not handled.
-            A pointer foul-up in freelines() in par.c could cause a crash.
-        Added the following features:
-            The f, j, and t options.
-            The PARBODY environment variable.
-            Multiple options may be concatenated into a single argument.
-        Removed the m option:
-            Its function is better performed by the f and t options.
-            Normally I would avoid making incompatible changes, unless I
-            were doing a complete overhaul of the whole program, in which
-            case I'd make the version number 2.00 to alert users to possible
-            incompatibilities.  However, in this particular instance I
-            allowed an incompatibility in a minor upgrade because version
-            1.00 was distributed to only four people.
-        Changed the handling of white characters:
-            par now changes all of them (except newlines) to spaces as they
-            are read.  This is another incompatible change, excused for the
-            same reason.
-        Made all error messages begin with "par error:".
-
-    Par 1.20 released 10 August 1993
-        Since Par 1.10 was distributed to no one, I've made some more
-            incompatible changes in Par 1.20.
-        Added the following features:
-            The d option.
-            Paragraphs are now separated by vacant lines, not just blank
-                lines.
-            <hang> now affects not only <prefix> but also <suffix>.
-
-    Par 1.30 released 18 August 1993
-        Since Par 1.20 was posted to comp.sources.misc, I have made only
-            backward-compatible changes in Par 1.30.
-        Fixed the following bugs:
-            One wrong word in par.c sometimes caused par to crash.  Thanks
-                go to vogelke@c-17igp.wpafb.af.mil (Contr Karl Vogel) for
-                sending me an input file that caused a crash.
-            Too-long words were chopped up before the first word in a
-                paragraph was expanded to include initial spaces, allowing
-                impossibility #1 to occur.  The order of the two operations
-                has been reversed.  Thanks go to splat@deakin.oz.au (Andrew
-                Cashin) for reporting the error message.
-        Added the following features:
-            The g option (motivated by suggestions from several people).
-            The q option (inspired by a suggestion from splat@deakin.oz.au
-                (Andrew Cashin)).
-            The R option (my attempt to squash a bad idea from Par 1.00).
-            The PARQUOTE environment variable (comes with the q option).
-            The PARPROTECT environment variable (inspired by a suggestion
-                from dennisf@se01.elk.miles.com (Dennis Flaherty)).
-        Altered the terminology:
-            Several terms have been added, and the meaning of some terms
-            has been slightly modified.  This is a change in the language
-            used to describe par's behavior, not a change in par's actual
-            behavior.
-        Added a clean target to protoMakefile (suggested by hlj@posix.com
-            (Hal Jespersen)).
-
-    Par 1.31 released 7 September 1993
-        The version number is 1.31 rather than 1.40 because all added
-            features are really just enhancements of existing features.
-        Fixed the following bug:
-            In par.doc, in the example of a paragraph produced by a greedy
-                algorithm, the word "establish" appeared twice in a row.
-                Thanks go to daniel@astro.rug.nl (Daniel Kussendrager) for
-                first pointing this out.  (The example is now even better
-                because the paragraph looks even worse than before.)
-        Added the following features:
-            A usage message to accompany command line or environment
-                variable syntax errors (first suggested by
-                qarl@ecl.wustl.edu (Karl Stiefvater)).
-            The help and c options.
-            The B, P, and Q options, which render PARBODY, PARPROTECT, and
-                PARQUOTE no longer necessary.  They are retained, though,
-                for compatibility and convenience.
-            The _b, _q, and _Q escape sequences for charset syntax.
-        Added the term "charset syntax".
-        Isolated the character set code in charset.c and charset.h.
-
-    Par 1.32 released 13 September 1993
-        Fixed the following bugs:
-            par could crash when the + or - operator was used with the B,
-                P, and Q options.  Thanks go to splat@deakin.oz.au (Andrew
-                Cashin) for reporting this.
-            If <quote> were 1 and two adjacent lines had different
-                quoteprefixes, one of which was a prefix of the other,
-                and only the line with the shorter quoteprefix contained
-                a non-quote character, then nothing would be altered.
-                According to par.doc 1.31, this was correct, but since
-                neither line is vacant, I consider this a bug in the design
-                of the <quote> feature.  Now the longer quoteprefix will be
-                truncated to match the shorter one, and will therefore be
-                vacant.  Thanks go to splat@deakin.oz.au (Andrew Cashin) for
-                asking about this.
-        Made slight changes to the documentation.
-
-    Par 1.40 released 10 Oct 1993
-        Fixed the following bugs:
-            The phrase "containing at least two lines" was left out of the
-                definition of "vacant line" in par.doc and par.1, although
-                the code implemented the correct definition.  (The phrase
-                now appears in the definition of "order <k> bodiless line".)
-            There was still a flaw in the design of the <quote> feature.  If
-                two adjacent lines had quoteprefixes neither of which was a
-                prefix of the other, no line would be inserted between them,
-                possibly causing other inserted lines not to be vacant.  Now
-                it should be true that every line inserted or truncated by
-                the <quote> feature will turn out to be vacant.
-            When <hang> began affecting the default value of <suffix> (as of
-                Par 1.20), it should also have begun affecting the choice of
-                source of characters for the suffixes of lines in OPs.
-        Added the following features:
-            The i option (suggested by barrett@ee.und.ac.za (Alan Barrett)).
-            The e option (inspired by a suggestion from tim@ben.dciem.dnd.ca
-                (Tim Pointing)).
-            The r option.
-            The p, s, and w options are now accepted without numbers.
-            par no longer gives up so easily when choosing default values
-                for <prefix> and <suffix> for an IP with less than <hang>+2
-                lines, nor when choosing the source of characters for the
-                prefix and suffix of the <i>th output line when <i> > <n>
-                and <n> <= <hang>.  These are incompatible changes, but I
-                cannot imagine anyone preferring the old behavior.
-        Altered the terminology:
-            Added the terms "bodiless line" (a generalization of "vacant
-                line"), "fallback prelen", and "fallback suflen".
-        Made miscellaneous changes to the documentation, including the
-            addition of the Quick Start section.
-
-
 Compilation
 
-    To compile par, you need an ANSI C compiler.  Copy protoMakefile to
-    Makefile and edit it, following the instructions in the comments.  Then
-    use make (or the equivalent on your system) to compile par.
-
-    If you have no make, compile each .c file into an object file and link
-    all the object files together by whatever method works on your system.
-    Then go look for a version of make that works on your system, since it
-    will come in handy in the future.
+    To compile par, you need an ANSI C compiler.  Follow the instructions in
+    the comments in protoMakefile.
 
     If your compiler warns you about a pointer to a constant being converted
     to a pointer to a non-constant in line 521 of reformat.c, ignore it.
@@ -260,8 +118,9 @@ Compilation
 Synopsis
     par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>] [h[<hang>]]
         [p[<prefix>]] [r[<repeat>]] [s[<suffix>]] [w[<width>]] [c[<cap>]]
-        [d[<div>]] [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]]
-        [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]
+        [d[<div>]] [E[<Err>]] [e[<expel>]] [f[<fit>]] [g[<guess>]]
+        [i[<invis>]] [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]]
+        [t[<touch>]]
 
     Things enclosed in [square brackets] are optional.  Things enclosed in
     <angle brackets> are parameters.
@@ -390,6 +249,13 @@ Terminology
             the block has any bodiless lines; otherwise, 0.  (See below for
             the definitions of block, segment, and bodiless line.)
 
+        augmented fallback prelen
+            Let <fp> be the fallback prelen of an IP.  If the IP contains
+            more than one line, or if <quote> is 0, then the augmented
+            fallback prelen of the IP is simply <fp>.  Otherwise, it is <fp>
+            plus the number of quote characters immediately following the
+            first <fp> characters of the line.
+
         quoteprefix
             The quoteprefix of a line is the longest string of quote
             characters appearing at the beginning of the line, after this
@@ -477,7 +343,7 @@ Options
                 describing the options used by par.
 
     version     Causes all remaining arguments to be ignored.  No input is
-                read.  "par 1.40" is printed on the output.  Of course, this
+                read.  "par 1.41" is printed on the output.  Of course, this
                 will change in future releases of Par.
 
     B<op><set>  <op> is a single character, either an equal sign (=), a
@@ -518,12 +384,10 @@ Options
                 corresponding line of the IP.  If there are more than
                 <hang>+1 lines in the IP, the default value is the comprelen
                 of all the lines in the IP except the first <hang> of them.
-                Otherwise, the default value is the fallback prelen of the
-                IP, plus, if <quote> is 1, the number of quote characters
-                immediately following the first fallback prelen characters
-                of the last line of the IP.  If the p option is given
-                without a number, <prefix> is unset, even if it had been set
-                earlier.  (See also the h and q options.)
+                Otherwise, the default value is the augmented fallback
+                prelen of the IP.  If the p option is given without a
+                number, <prefix> is unset, even if it had been set earlier.
+                (See also the h and q options.)
 
     r[<repeat>] If <repeat> is non-zero, bodiless lines have the number of
                 instances of their repeat characters increased or decreased
@@ -547,10 +411,10 @@ Options
                 the w option is given without a number, the value 79 is
                 inferred.
 
-    The remaining eleven parameters, <cap>, <div>, <expel>, <fit>, <guess>,
-    <invis>, <just>, <last>, <quote>, <Report>, and <touch>, may be set to
-    either 0 or 1.  If the number is absent in the option, the value 1 is
-    inferred.
+    The remaining twelve parameters, <cap>, <div>, <Err>, <expel>, <fit>,
+    <guess>, <invis>, <just>, <last>, <quote>, <Report>, and <touch>, may be
+    set to either 0 or 1.  If the number is absent in the option, the value
+    1 is inferred.
 
     c[<cap>]    If <cap> is 1, all words are considered capitalized.  This
                 currently affects only the application of the g option.
@@ -562,6 +426,10 @@ Options
                 (<p>+1)st character is a space, 0 otherwise.  Every line
                 in the block whose status is the same as the status of the
                 first line will begin a new paragraph.  Defaults to 0.
+
+    E[<Err>]    If <Err> is 1, messages to the user (caused by the help and
+                version options, or by errors) are sent to the error stream
+                instead of the output stream.  Defaults to 0.
 
     e[<expel>]  If <expel> is 1, superfluous lines withheld from the output.
                 Defaults to 0.
@@ -762,9 +630,9 @@ Details
     bring its length up to <L>.
 
     To each line is prepended <prefix> characters.  Let <n> be the number of
-    lines in the IP, let <fp> be the fallback prelen of the IP, and let <fs>
-    be the fallback suflen of the IP.  The characters which are prepended to
-    the <i>th line are chosen as follows:
+    lines in the IP, let <afp> be the augmented fallback prelen of the IP,
+    and let <fs> be the fallback suflen of the IP.  The characters which are
+    prepended to the <i>th line are chosen as follows:
 
      1) If <i> <= <n>, the characters are copied from the ones that were
         removed from the beginning of the <n>th input line.
@@ -772,7 +640,7 @@ Details
      2) If <i> > <n> > <hang>, the characters are copied from the ones that
         were removed from the beginning of the last input line.
 
-     3) If <i> > <n> and <n> <= <hang>, the first min(<fp>,<prefix>) of
+     3) If <i> > <n> and <n> <= <hang>, the first min(<afp>,<prefix>) of
         the characters are copied from the ones that were removed from the
         beginning of the last input line, and the rest are all spaces.
 

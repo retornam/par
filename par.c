@@ -1,6 +1,6 @@
 /*********************/
 /* par.c             */
-/* for Par 1.40      */
+/* for Par 1.41      */
 /* Copyright 1993 by */
 /* Adam M. Costello  */
 /*********************/
@@ -31,9 +31,8 @@ static const char * const usagemsg =
 "\n"
 "par [help] [version] [B<op><set>] [P<op><set>] [Q<op><set>] [h[<hang>]]\n"
 "    [p[<prefix>]] [r[<repeat>]] [s[<suffix>]] [w[<width>]] [c[<cap>]]\n"
-"    [d[<div>]] [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]] "
-                                                                "[j[<just>]]\n"
-"    [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]\n"
+"    [d[<div>]] [E[<Err>]] [e[<expel>]] [f[<fit>]] [g[<guess>]] [i[<invis>]]\n"
+"    [j[<just>]] [l[<last>]] [q[<quote>]] [R[<Report>]] [t[<touch>]]\n"
 "\n"
 "help       print usage message       "
                                  "  ---------- Boolean parameters: ---------\n"
@@ -44,10 +43,12 @@ static const char * const usagemsg =
 "           replace/augment/diminish  "
                                  "  d<div>    use indentation as a delimiter\n"
 "           body chars by <set>       "
-                                 "  e<expel>  discard superfluous lines\n"
+                                 "  E<Err>    send messages to stderr\n"
 "P<op><set> ditto for protective chars"
-                                 "  f<fit>    narrow paragraph for best fit\n"
+                                 "  e<expel>  discard superfluous lines\n"
 "Q<op><set> ditto for quote chars     "
+                                 "  f<fit>    narrow paragraph for best fit\n"
+"-------- Integer parameters: --------"
                                  "  g<guess>  preserve wide sentence breaks\n"
 "h<hang>    skip IP's 1st <hang> lines"
                                  "  i<invis>  hide lines inserted by <quote>\n"
@@ -140,9 +141,9 @@ static int strtoudec(const char *s, int *pn)
 static void parsearg(
   const char *arg, int *phelp, int *pversion, charset *bodychars,
   charset *protectchars, charset *quotechars, int *phang, int *pprefix,
-  int *prepeat, int *psuffix, int *pwidth, int *pcap, int *pdiv, int *pexpel,
-  int *pfit, int *pguess, int *pinvis, int *pjust, int *plast, int *pquote,
-  int *pReport, int *ptouch, errmsg_t errmsg
+  int *prepeat, int *psuffix, int *pwidth, int *pcap, int *pdiv, int *pErr,
+  int *pexpel, int *pfit, int *pguess, int *pinvis, int *pjust, int *plast,
+  int *pquote, int *pReport, int *ptouch, errmsg_t errmsg
 )
 /* Parses the command line argument in *arg, setting the objects pointed to */
 /* by the other pointers as appropriate.  *phelp and *pversion are boolean  */
@@ -203,9 +204,11 @@ static void parsearg(
       else  /* oc == 's' */ *psuffix =  n;
     }
     else {
+      if (n < 0) n = 1;
       if (n > 1) goto badarg;
       if      (oc == 'c') *pcap    = n;
       else if (oc == 'd') *pdiv    = n;
+      else if (oc == 'E') *pErr    = n;
       else if (oc == 'e') *pexpel  = n;
       else if (oc == 'f') *pfit    = n;
       else if (oc == 'g') *pguess  = n;
@@ -548,36 +551,35 @@ static void marksuperf(
 static void setaffixes(
   const char * const *inlines, const char * const *endline,
   const lineprop *props, const charset *bodychars, const charset *quotechars,
-  int hang, int quote, int *pprefix, int *psuffix
+  int hang, int quote, int *pafp, int *pfs, int *pprefix, int *psuffix
 )
-/* inlines is an array of strings, up to but not including endline.  */
-/* inlines and endline must not be equal.  props is the the parallel */
-/* array of lineprop structures.  If either of *pprefix, *psuffix    */
-/* is less than 0, it is set to a default value based on inlines,    */
-/* bodychars, quotechars, hang, and quote, according to "par.doc".   */
+/* inlines is an array of strings, up to but not including endline,    */
+/* representing an IP.  inlines and endline must not be equal.  props  */
+/* is the the parallel array of lineprop structures.  *pafp and *pfs   */
+/* are set to the augmented fallback prelen and fallback suflen of the */
+/* IP.  If either of *pprefix, *psuffix is less than 0, it is set to a */
+/* default value as specified in "par.doc".                            */
 {
   int numin, pre, suf;
-  const char *start, *p;
+  const char *p;
 
   numin = endline - inlines;
 
   if ((*pprefix < 0 || *psuffix < 0)  &&  numin > hang + 1)
     compresuflen(inlines + hang, endline, bodychars, 0, 0, &pre, &suf);
 
+  p = *inlines + props->p;
+  if (numin == 1 && quote)
+    while (*p && csmember (*p, quotechars))
+      ++p;
+  *pafp = p - *inlines;
+  *pfs = props->s;
+
   if (*pprefix < 0)
-    if (numin > hang + 1)
-      *pprefix = pre;
-    else {
-      start = endline[-1];
-      p = start + props->p;
-      if (quote)
-        while (*p && csmember(*p, quotechars))
-          ++p;
-      *pprefix = p - start;
-    }
+    *pprefix  =  numin > hang + 1  ?  pre  :  *pafp;
 
   if (*psuffix < 0)
-    *psuffix = numin > hang + 1  ?  suf  :  props->s;
+    *psuffix  =  numin > hang + 1  ?  suf  :  *pfs;
 }
 
 
@@ -594,18 +596,19 @@ static void freelines(char **lines)
 }
 
 
-main(int argc, const char * const *argv)
+int main(int argc, const char * const *argv)
 {
   int help = 0, version = 0, hang = 0, prefix = -1, repeat = 0, suffix = -1,
-      width = 72, cap = 0, div = 0, expel = 0, fit = 0, guess = 0, invis = 0,
-      just = 0, last = 0, quote = 0, Report = 0, touch = -1, prefixbak,
-      suffixbak, c, sawnonblank, oweblank, n, i;
+      width = 72, cap = 0, div = 0, Err = 0, expel = 0, fit = 0, guess = 0,
+      invis = 0, just = 0, last = 0, quote = 0, Report = 0, touch = -1,
+      prefixbak, suffixbak, c, sawnonblank, oweblank, n, i, afp, fs;
   charset *bodychars = NULL, *protectchars = NULL, *quotechars = NULL;
   char *parinit = NULL, *arg, **inlines = NULL, **endline, **firstline, *end,
        **nextline, **outlines = NULL, **line;
   const char *env, * const whitechars = " \f\n\r\t\v";
   errmsg_t errmsg = { '\0' };
   lineprop *props = NULL, *firstprop, *nextprop;
+  FILE *errout;
 
 /* Process environment variables: */
 
@@ -645,8 +648,8 @@ main(int argc, const char * const *argv)
     while (arg) {
       parsearg(arg, &help, &version, bodychars, protectchars,
                quotechars, &hang, &prefix, &repeat, &suffix,
-               &width, &cap, &div, &expel, &fit, &guess, &invis,
-               &just, &last, &quote, &Report, &touch, errmsg    );
+               &width, &cap, &div, &Err, &expel, &fit, &guess,
+               &invis, &just, &last, &quote, &Report, &touch, errmsg);
       if (*errmsg || help || version) goto parcleanup;
       arg = strtok(NULL,whitechars);
     }
@@ -659,8 +662,8 @@ main(int argc, const char * const *argv)
   while (*++argv) {
     parsearg(*argv, &help, &version, bodychars, protectchars,
              quotechars, &hang, &prefix, &repeat, &suffix,
-             &width, &cap, &div, &expel, &fit, &guess, &invis,
-             &just, &last, &quote, &Report, &touch, errmsg    );
+             &width, &cap, &div, &Err, &expel, &fit, &guess,
+             &invis, &just, &last, &quote, &Report, &touch, errmsg);
     if (*errmsg || help || version) goto parcleanup;
   }
 
@@ -751,8 +754,8 @@ main(int argc, const char * const *argv)
 
       prefix = prefixbak, suffix = suffixbak;
       setaffixes((const char * const *) firstline,
-                 (const char * const *) nextline, firstprop,
-                 bodychars, quotechars, hang, quote, &prefix, &suffix);
+                 (const char * const *) nextline, firstprop, bodychars,
+                 quotechars, hang, quote, &afp, &fs, &prefix, &suffix);
       if (width <= prefix + suffix) {
         sprintf(errmsg,
                 "<width> (%d) <= <prefix> (%d) + <suffix> (%d)\n",
@@ -763,8 +766,8 @@ main(int argc, const char * const *argv)
       outlines =
         reformat((const char * const *) firstline,
                  (const char * const *) nextline,
-                 firstprop->p, firstprop->s, hang, prefix, suffix,
-                 width, cap, fit, guess, just, last, Report, touch, errmsg);
+                 afp, fs, hang, prefix, suffix, width, cap,
+                 fit, guess, just, last, Report, touch, errmsg);
       if (*errmsg) goto parcleanup;
 
       for (line = outlines;  *line;  ++line)
@@ -793,9 +796,10 @@ parcleanup:
   if (props) free(props);
   if (outlines) freelines(outlines);
 
-  if (*errmsg) printf("par error:\n%.*s", errmsg_size, errmsg);
-  if (version) puts("par 1.40");
-  if (help)    fputs(usagemsg,stdout);
+  errout = Err ? stderr : stdout;
+  if (*errmsg) fprintf(errout, "par error:\n%.*s", errmsg_size, errmsg);
+  if (version) fputs("par 1.41\n",errout);
+  if (help)    fputs(usagemsg,errout);
 
   return *errmsg ? EXIT_FAILURE : EXIT_SUCCESS;
 }
